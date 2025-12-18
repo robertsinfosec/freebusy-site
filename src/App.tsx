@@ -6,8 +6,84 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { WeekSection } from '@/components/WeekSection'
 import { parseICalData, mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
 import { getStartOfDay, getStartOfWeek, addDays } from '@/lib/date-utils'
-import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus } from '@phosphor-icons/react'
+import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus, SunDim, Moon, Monitor } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTheme } from 'next-themes'
+
+function ThemeToggle() {
+  const { theme, systemTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const effectiveTheme = theme === 'system' ? systemTheme : theme
+
+  useEffect(() => {
+    if (!mounted) return
+    const root = document.documentElement
+    const resolved = theme === 'system'
+      ? (systemTheme ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
+      : theme
+
+    root.classList.remove('light', 'dark')
+    if (resolved === 'dark') {
+      root.classList.add('dark')
+      root.dataset.theme = 'dark'
+    } else {
+      root.classList.add('light')
+      root.dataset.theme = 'light'
+    }
+  }, [theme, systemTheme, mounted])
+
+  const cycleTheme = () => {
+    const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
+    const current = theme ?? 'system'
+    const next = order[(order.indexOf(current) + 1) % order.length]
+    setTheme(next)
+  }
+
+  if (!mounted) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10"
+        aria-label="Toggle theme"
+        disabled
+      >
+        <Monitor size={18} />
+      </Button>
+    )
+  }
+
+  const icon = effectiveTheme === 'dark'
+    ? <Moon size={18} />
+    : effectiveTheme === 'light'
+      ? <SunDim size={18} />
+      : <Monitor size={18} />
+
+  const label = effectiveTheme === 'dark'
+    ? 'Dark'
+    : effectiveTheme === 'light'
+      ? 'Light'
+      : 'System'
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-10 w-10"
+      onClick={cycleTheme}
+      aria-label={`Theme: ${label}`}
+      title={`Theme: ${label}`}
+    >
+      {icon}
+      <span className="sr-only">Toggle theme</span>
+    </Button>
+  )
+}
 
 function App() {
   const [busyBlocks, setBusyBlocks] = useState<BusyBlock[]>([])
@@ -70,6 +146,7 @@ function App() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <Button
                 asChild
                 variant="default"

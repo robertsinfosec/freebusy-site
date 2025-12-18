@@ -87,4 +87,3 @@ Modern browsers with ES2020+ support:
 ## License
 
 Private use only.
-
