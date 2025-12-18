@@ -33,7 +33,8 @@ function App() {
         throw new Error('ICAL_URL environment variable is not set')
       }
 
-      const response = await fetch(icalUrl)
+      const corsProxy = 'https://corsproxy.io/?'
+      const response = await fetch(corsProxy + encodeURIComponent(icalUrl))
       
       if (!response.ok) {
         throw new Error(`Failed to fetch calendar: ${response.statusText}`)
