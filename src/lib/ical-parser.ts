@@ -25,11 +25,9 @@ function parseICalDate(dateStr: string): Date {
   }
 }
 
-function convertToET(date: Date): Date {
-  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }))
-  const etDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const offset = utcDate.getTime() - etDate.getTime()
-  return new Date(date.getTime() - offset)
+function convertToLocalTime(utcDate: Date): Date {
+  const localTimeStr = utcDate.toLocaleString('en-US', { timeZone: 'America/New_York' })
+  return new Date(localTimeStr)
 }
 
 export function parseICalData(icalText: string): BusyBlock[] {
@@ -53,8 +51,8 @@ export function parseICalData(icalText: string): BusyBlock[] {
     } else if (line === 'END:VEVENT' && inEvent) {
       if (currentEvent.start && currentEvent.end) {
         events.push({
-          start: convertToET(currentEvent.start),
-          end: convertToET(currentEvent.end),
+          start: convertToLocalTime(currentEvent.start),
+          end: convertToLocalTime(currentEvent.end),
           summary: currentEvent.summary
         })
       }

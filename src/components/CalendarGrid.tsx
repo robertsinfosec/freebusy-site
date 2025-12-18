@@ -105,11 +105,15 @@ export function CalendarGrid({
                   {blocks.length > 0 && (
                     <div
                       className={cn(
-                        'absolute inset-0 bg-primary/80 border-l-2 border-primary',
+                        'absolute inset-0 bg-primary/80 border-l-2 border-primary flex items-center justify-center',
                         isPast && 'opacity-50'
                       )}
                       title={blocks[0].summary || 'Busy'}
-                    />
+                    >
+                      <span className="text-xs font-semibold text-primary-foreground uppercase tracking-wide">
+                        Busy
+                      </span>
+                    </div>
                   )}
                 </div>
               )

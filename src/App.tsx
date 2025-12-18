@@ -17,10 +17,8 @@ function App() {
 
   const today = useMemo(() => getStartOfDay(new Date()), [])
   const currentWeekStart = useMemo(() => getStartOfWeek(today), [today])
-  const prevWeekStart = useMemo(() => addDays(currentWeekStart, -7), [currentWeekStart])
   const nextWeekStart = useMemo(() => addDays(currentWeekStart, 7), [currentWeekStart])
   const thirdWeekStart = useMemo(() => addDays(currentWeekStart, 14), [currentWeekStart])
-  const fourthWeekStart = useMemo(() => addDays(currentWeekStart, 21), [currentWeekStart])
 
   const fetchCalendar = async () => {
     setLoading(true)
@@ -117,7 +115,7 @@ function App() {
                 })}
               </CardTitle>
               <CardDescription>
-                Showing {showThirdWeek ? '4' : '3'} weeks of availability. 
+                Showing {showThirdWeek ? '3' : '2'} weeks of availability. 
                 {busyBlocks.length === 0 && ' No busy blocks scheduled.'}
               </CardDescription>
             </CardHeader>
@@ -126,19 +124,6 @@ function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-              >
-                <WeekSection
-                  startDate={prevWeekStart}
-                  busyBlocks={busyBlocks}
-                  opacity={0.3}
-                  showTimeLabels={true}
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
               >
                 <WeekSection
                   startDate={currentWeekStart}
@@ -151,7 +136,7 @@ function App() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.2 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
               >
                 <WeekSection
                   startDate={nextWeekStart}
@@ -196,18 +181,11 @@ function App() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3 }}
-                      className="space-y-6"
                     >
                       <WeekSection
                         startDate={thirdWeekStart}
                         busyBlocks={busyBlocks}
                         opacity={1}
-                        showTimeLabels={true}
-                      />
-                      <WeekSection
-                        startDate={fourthWeekStart}
-                        busyBlocks={busyBlocks}
-                        opacity={0.3}
                         showTimeLabels={true}
                       />
                     </motion.div>
