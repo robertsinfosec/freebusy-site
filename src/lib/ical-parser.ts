@@ -74,7 +74,7 @@ export function parseICalData(icalText: string): BusyBlock[] {
       inEvent = false
     } else if (inEvent) {
       if (line.startsWith('DTSTART')) {
-        const dateMatch = line.match(/[:;](\d{8}T?\d{6}Z?)/)
+        const dateMatch = line.match(/[:;](\d{8}(T\d{6}Z?)?)/)
         const isDateOnly = line.includes('VALUE=DATE') || !line.includes('T')
         if (dateMatch) {
           const parsed = parseICalDate(dateMatch[1])
@@ -82,7 +82,7 @@ export function parseICalData(icalText: string): BusyBlock[] {
           currentEvent.startIsDateOnly = isDateOnly || parsed.isDateOnly
         }
       } else if (line.startsWith('DTEND')) {
-        const dateMatch = line.match(/[:;](\d{8}T?\d{6}Z?)/)
+        const dateMatch = line.match(/[:;](\d{8}(T\d{6}Z?)?)/)
         const isDateOnly = line.includes('VALUE=DATE') || !line.includes('T')
         if (dateMatch) {
           const parsed = parseICalDate(dateMatch[1])
