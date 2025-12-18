@@ -1,6 +1,6 @@
 # Planning Guide
 
-A professional free/busy calendar viewer that displays availability from a ProtonMail iCal feed, showing a 2-week window with the ability to expand to 3 weeks, designed for scheduling transparency.
+A professional free/busy calendar viewer that displays availability from an iCal feed, showing a 2-week window with the ability to expand to 3 weeks, designed for scheduling transparency.
 
 **Experience Qualities**: 
 1. **Professional** - Clean, trustworthy interface appropriate for business scheduling
@@ -14,7 +14,7 @@ This is a focused calendar visualization tool with iCal parsing, date range hand
 
 **iCal Feed Parsing**
 - Functionality: Fetches and parses iCal data from environment variable URL to extract busy time blocks
-- Purpose: Provides real-time availability data from ProtonMail calendar
+- Purpose: Provides real-time availability data from an iCal calendar feed
 - Trigger: Loads automatically on page mount and refreshes periodically
 - Progression: Fetch iCal URL → Parse VEVENT entries → Extract busy time blocks → Map to calendar grid
 - Success criteria: Accurately displays all busy blocks from the calendar feed with correct date/time ranges

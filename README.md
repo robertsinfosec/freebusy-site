@@ -1,10 +1,10 @@
 # robertsinfosec Free/Busy Calendar
 
-A professional free/busy calendar viewer that displays real-time availability from a ProtonMail iCal feed.
+A professional free/busy calendar viewer that displays real-time availability from an iCal feed.
 
 ## Features
 
-- **Real-time Calendar Integration**: Fetches and displays busy/free time from ProtonMail calendar via iCal feed
+- **Real-time Calendar Integration**: Fetches and displays busy/free time from an iCal feed
 - **Smart Date Ranges**: Shows 2 weeks ahead with context from the previous week and option to expand to 3 weeks
 - **Working Hours Visualization**: Clearly distinguishes working hours (Mon-Fri, 8am-6pm ET) from non-working time
 - **Auto-refresh**: Calendar updates every 5 minutes to show current availability
@@ -22,9 +22,16 @@ npm install
 cp .env.example .env
 ```
 
-3. Edit `.env` and add your ProtonMail calendar iCal URL:
+3. Edit `.env` and add your iCal URL:
 ```
+# Example: Proton Calendar iCal URL when you "Share" a calendar
 VITE_ICAL_URL=https://calendar.protonmail.com/api/calendar/v1/url/YOUR_CALENDAR_ID/calendar.ics
+
+## Example: Google Calendar iCal URL
+# VITE_ICAL_URL=https://calendar.google.com/calendar/ical/YOUR_CALENDAR_ID/public/basic.ics
+
+## Example: Outlook Calendar iCal URL
+# VITE_ICAL_URL=https://outlook.office.com/owa/calendar/YOUR_CALENDAR_ID/calendar.ics
 ```
 
 4. Start the development server:
@@ -47,11 +54,11 @@ npm run dev
 In CloudFlare Pages dashboard, add the following environment variable:
 
 - **Variable name**: `VITE_ICAL_URL` (for build time) or `ICAL_URL` (runtime)
-- **Value**: Your ProtonMail iCal URL (e.g., `https://calendar.protonmail.com/api/calendar/v1/url/YOUR_CALENDAR_ID/calendar.ics`)
+- **Value**: Your iCal URL (e.g., `https://calendar.protonmail.com/api/calendar/v1/url/YOUR_CALENDAR_ID/calendar.ics`)
 
-### Getting Your ProtonMail iCal URL
+### Getting Your iCal URL
 
-1. Log into ProtonMail Calendar
+1. Log into your calendar service (e.g., ProtonMail, Google Calendar, Outlook)
 2. Navigate to Calendar Settings
 3. Find the "Share" or "Calendar Address" section
 4. Copy the iCal/ICS URL

@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { WeekSection } from '@/components/WeekSection'
 import { parseICalData, mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
 import { getStartOfDay, getStartOfWeek, addDays } from '@/lib/date-utils'
-import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus, SunDim, Moon, Monitor } from '@phosphor-icons/react'
+import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus, SunDim, Moon, Monitor, ClockAfternoon } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from 'next-themes'
 
@@ -146,23 +146,23 @@ function App() {
     <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <div className="max-w-[1600px] mx-auto">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Calendar size={32} weight="duotone" className="text-primary" />
-              <h1 className="text-3xl font-bold tracking-tight">
+              <Calendar size={28} weight="duotone" className="text-primary" />
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 robertsinfosec Free/Busy
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               <ThemeToggle />
               <Button
                 asChild
                 variant="default"
-                size="default"
+                size="sm"
                 className="gap-2"
               >
                 <a href="https://cal.com/robertsinfosec" target="_blank" rel="noopener noreferrer">
-                  <CalendarPlus size={18} />
+                  <CalendarPlus size={16} />
                   Book a Meeting
                 </a>
               </Button>
@@ -170,17 +170,21 @@ function App() {
                 onClick={fetchCalendar}
                 disabled={loading}
                 variant="outline"
-                size="default"
+                size="sm"
                 className="gap-2"
               >
-                <ArrowClockwise size={18} className={loading ? 'animate-spin' : ''} />
+                <ArrowClockwise size={16} className={loading ? 'animate-spin' : ''} />
                 Refresh
               </Button>
             </div>
           </div>
           <p className="text-muted-foreground text-base">
-            Real-time availability from ProtonMail calendar. Working hours: Mon-Fri, 8am-6pm ET
+            Real-time availability from my scheduling calendar. Working hours: Mon-Fri, 8am-6pm ET
           </p>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground">
+            <ClockAfternoon size={16} className="text-primary" />
+            <span>All times shown in Eastern Time (ET).</span>
+          </div>
         </div>
 
         {error && (

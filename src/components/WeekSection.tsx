@@ -26,13 +26,17 @@ export function WeekSection({
         {' - '}
         {weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
       </div>
-      <CalendarGrid
-        startDate={startDate}
-        days={7}
-        busyBlocks={busyBlocks}
-        opacity={opacity}
-        showTimeLabels={showTimeLabels}
-      />
+      <div className="overflow-x-auto pb-1">
+        <div className="min-w-[640px] sm:min-w-0">
+          <CalendarGrid
+            startDate={startDate}
+            days={7}
+            busyBlocks={busyBlocks}
+            opacity={opacity}
+            showTimeLabels={showTimeLabels}
+          />
+        </div>
+      </div>
     </div>
   )
 }
