@@ -62,11 +62,23 @@ function App() {
     <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
       <div className="max-w-[1600px] mx-auto">
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Calendar size={32} weight="duotone" className="text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight">
-              robertsinfosec Free/Busy
-            </h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Calendar size={32} weight="duotone" className="text-primary" />
+              <h1 className="text-3xl font-bold tracking-tight">
+                robertsinfosec Free/Busy
+              </h1>
+            </div>
+            <Button
+              onClick={fetchCalendar}
+              disabled={loading}
+              variant="outline"
+              size="default"
+              className="gap-2"
+            >
+              <ArrowClockwise size={18} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </Button>
           </div>
           <p className="text-muted-foreground text-base">
             Real-time availability from ProtonMail calendar. Working hours: Mon-Fri, 8am-6pm ET

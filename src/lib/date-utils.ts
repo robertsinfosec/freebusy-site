@@ -54,6 +54,19 @@ export function formatTime(hour: number): string {
   return `${hour - 12} PM`
 }
 
+export function formatTimeRange(start: Date, end: Date): string {
+  const formatDateTime = (date: Date): string => {
+    let hours = date.getHours()
+    const minutes = date.getMinutes()
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    hours = hours % 12 || 12
+    const minuteStr = minutes > 0 ? `:${minutes.toString().padStart(2, '0')}` : ''
+    return `${hours}${minuteStr} ${ampm}`
+  }
+  
+  return `${formatDateTime(start)} - ${formatDateTime(end)}`
+}
+
 export function getStartOfWeek(date: Date): Date {
   const d = getStartOfDay(date)
   const day = d.getDay()
