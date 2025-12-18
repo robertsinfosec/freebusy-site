@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WeekSection } from '@/components/WeekSection'
 import { parseICalData, mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
-import { getStartOfDay, addDays } from '@/lib/date-utils'
+import { getStartOfDay, getStartOfWeek, addDays } from '@/lib/date-utils'
 import { Calendar, CaretDown, Warning, ArrowClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -16,11 +16,11 @@ function App() {
   const [showThirdWeek, setShowThirdWeek] = useState(false)
 
   const today = useMemo(() => getStartOfDay(new Date()), [])
-  const prevWeekStart = useMemo(() => addDays(today, -7), [today])
-  const currentWeekStart = useMemo(() => today, [today])
-  const nextWeekStart = useMemo(() => addDays(today, 7), [today])
-  const thirdWeekStart = useMemo(() => addDays(today, 14), [today])
-  const fourthWeekStart = useMemo(() => addDays(today, 21), [today])
+  const currentWeekStart = useMemo(() => getStartOfWeek(today), [today])
+  const prevWeekStart = useMemo(() => addDays(currentWeekStart, -7), [currentWeekStart])
+  const nextWeekStart = useMemo(() => addDays(currentWeekStart, 7), [currentWeekStart])
+  const thirdWeekStart = useMemo(() => addDays(currentWeekStart, 14), [currentWeekStart])
+  const fourthWeekStart = useMemo(() => addDays(currentWeekStart, 21), [currentWeekStart])
 
   const fetchCalendar = async () => {
     setLoading(true)

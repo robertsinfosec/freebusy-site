@@ -54,6 +54,13 @@ export function formatTime(hour: number): string {
   return `${hour - 12} PM`
 }
 
+export function getStartOfWeek(date: Date): Date {
+  const d = getStartOfDay(date)
+  const day = d.getDay()
+  const diff = day
+  return addDays(d, -diff)
+}
+
 export function getDateRange(startDate: Date, weeks: number) {
   const start = getStartOfDay(startDate)
   const days: Date[] = []
