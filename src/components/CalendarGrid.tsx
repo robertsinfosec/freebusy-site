@@ -11,7 +11,7 @@ import {
   formatTimeRange
 } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface CalendarGridProps {
   startDate: Date
@@ -67,8 +67,7 @@ export function CalendarGrid({
       className="relative"
       style={{ opacity }}
     >
-      <TooltipProvider>
-        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-0 border border-border rounded-lg overflow-hidden">
+      <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-0 border border-border rounded-lg overflow-hidden">
           <div className="bg-card border-b border-r border-border" />
           
           {dates.map((date, idx) => {
@@ -150,7 +149,6 @@ export function CalendarGrid({
             </div>
           ))}
         </div>
-      </TooltipProvider>
     </div>
   )
 }
