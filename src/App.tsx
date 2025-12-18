@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { WeekSection } from '@/components/WeekSection'
 import { parseICalData, mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
 import { getStartOfDay, getStartOfWeek, addDays } from '@/lib/date-utils'
-import { Calendar, CaretDown, Warning, ArrowClockwise } from '@phosphor-icons/react'
+import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
@@ -69,16 +69,29 @@ function App() {
                 robertsinfosec Free/Busy
               </h1>
             </div>
-            <Button
-              onClick={fetchCalendar}
-              disabled={loading}
-              variant="outline"
-              size="default"
-              className="gap-2"
-            >
-              <ArrowClockwise size={18} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                asChild
+                variant="default"
+                size="default"
+                className="gap-2"
+              >
+                <a href="https://cal.com/robertsinfosec" target="_blank" rel="noopener noreferrer">
+                  <CalendarPlus size={18} />
+                  Book a Meeting
+                </a>
+              </Button>
+              <Button
+                onClick={fetchCalendar}
+                disabled={loading}
+                variant="outline"
+                size="default"
+                className="gap-2"
+              >
+                <ArrowClockwise size={18} className={loading ? 'animate-spin' : ''} />
+                Refresh
+              </Button>
+            </div>
           </div>
           <p className="text-muted-foreground text-base">
             Real-time availability from ProtonMail calendar. Working hours: Mon-Fri, 8am-6pm ET
