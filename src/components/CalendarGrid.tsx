@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { BusyBlock } from '@/lib/ical-parser'
-import { 
-  formatDateHeader, 
-  formatTime, 
-  isSameDay, 
+import {
+  formatDateHeader,
+  formatTime,
+  isSameDay,
   isWorkingHour,
   isWeekend,
   addDays,
@@ -11,7 +11,7 @@ import {
   formatTimeRange
 } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+// tooltip removed in favor of native title
 
 interface CalendarGridProps {
   startDate: Date
@@ -29,45 +29,43 @@ export function CalendarGrid({
   showTimeLabels = true 
 }: CalendarGridProps) {
   const today = useMemo(() => getStartOfDay(new Date()), [])
-  const hours = Array.from({ length: 10 }, (_, i) => i + 8)
+  const WORK_START = 8
+  const WORK_END = 18
+  const CELL_HEIGHT = 48
+  const hours = Array.from({ length: WORK_END - WORK_START }, (_, i) => i + WORK_START)
   const dates = useMemo(() => 
     Array.from({ length: days }, (_, i) => addDays(startDate, i)),
     [startDate, days]
   )
 
-  const getAllDayBlocksForDate = (date: Date) => {
-    return busyBlocks.filter(block => block.isAllDay && isSameDay(block.start, date))
-  }
+  const getDayBlocks = (date: Date) => {
+    const dayStart = new Date(date)
+    dayStart.setHours(WORK_START, 0, 0, 0)
+    const dayEnd = new Date(date)
+    dayEnd.setHours(WORK_END, 0, 0, 0)
 
-  const getBusyBlocksForCell = (date: Date, hour: number) => {
-    const cellStart = new Date(date)
-    cellStart.setHours(hour, 0, 0, 0)
-    const cellEnd = new Date(date)
-    cellEnd.setHours(hour + 1, 0, 0, 0)
+    return busyBlocks
+      .filter(block => block.start < dayEnd && block.end > dayStart)
+      .map(block => {
+        const effectiveStart = block.isAllDay
+          ? dayStart
+          : new Date(Math.max(block.start.getTime(), dayStart.getTime()))
+        const effectiveEnd = block.isAllDay
+          ? dayEnd
+          : new Date(Math.min(block.end.getTime(), dayEnd.getTime()))
 
-    return busyBlocks.filter(block => {
-      if (block.isAllDay) return false
-      return block.start < cellEnd && block.end > cellStart
-    }).map(block => {
-      const blockStart = new Date(Math.max(block.start.getTime(), cellStart.getTime()))
-      const blockEnd = new Date(Math.min(block.end.getTime(), cellEnd.getTime()))
-      
-      const cellDuration = cellEnd.getTime() - cellStart.getTime()
-      const blockStartOffset = blockStart.getTime() - cellStart.getTime()
-      const blockDuration = blockEnd.getTime() - blockStart.getTime()
-      
-      const topPercent = (blockStartOffset / cellDuration) * 100
-      const heightPercent = (blockDuration / cellDuration) * 100
-      
-      return {
-        ...block,
-        // use the clipped range for rendering and tooltips
-        visibleStart: blockStart,
-        visibleEnd: blockEnd,
-        topPercent,
-        heightPercent
-      }
-    })
+        const blockDuration = effectiveEnd.getTime() - effectiveStart.getTime()
+        const topPx = ((effectiveStart.getTime() - dayStart.getTime()) / (60 * 60 * 1000)) * CELL_HEIGHT
+        const heightPx = (blockDuration / (60 * 60 * 1000)) * CELL_HEIGHT
+
+        return {
+          ...block,
+          visibleStart: effectiveStart,
+          visibleEnd: effectiveEnd,
+          topPx,
+          heightPx
+        }
+      })
   }
 
   return (
@@ -75,7 +73,7 @@ export function CalendarGrid({
       className="relative"
       style={{ opacity }}
     >
-      <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-0 border border-border rounded-lg overflow-hidden">
+        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-0 border border-border rounded-lg overflow-hidden">
           <div className="bg-card border-b border-r border-border" />
           
           {dates.map((date, idx) => {
@@ -113,11 +111,11 @@ export function CalendarGrid({
               )}
               
               {dates.map((date, dateIdx) => {
-                const blocks = getBusyBlocksForCell(date, hour)
-                const allDayBlocks = getAllDayBlocksForDate(date)
                 const isWorking = isWorkingHour(hour, date)
                 const isWeekendDay = isWeekend(date)
                 const isPast = date < today || (isSameDay(date, today) && hour < new Date().getHours())
+                const isFirstHour = hour === WORK_START
+                const dayBlocks = isFirstHour ? getDayBlocks(date) : []
                 
                 return (
                   <div
@@ -129,46 +127,29 @@ export function CalendarGrid({
                       isPast && 'opacity-40'
                     )}
                   >
-                    {hour === hours[0] && allDayBlocks.length > 0 && (
-                      <div className="absolute top-1 left-1 right-1 z-20 flex flex-col gap-1">
-                        {allDayBlocks.map((block, idx) => (
-                          <Tooltip key={`allday-${block.start.toISOString()}-${idx}`}>
-                            <TooltipTrigger asChild>
-                              <div className="rounded-md bg-destructive/85 text-destructive-foreground px-2 py-1 text-xs font-semibold uppercase tracking-wide shadow-sm">
-                                {block.summary || 'All day busy'}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="font-medium">All day</p>
-                              {block.summary && <p className="text-sm text-muted-foreground">{block.summary}</p>}
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                      </div>
-                    )}
-                    {blocks.map((block, blockIdx) => (
-                      <Tooltip key={`${block.start.toISOString()}-${blockIdx}`}>
-                        <TooltipTrigger asChild>
+                    {isFirstHour && (
+                      <div className="absolute left-0 right-0" style={{ top: 0, height: `${(WORK_END - WORK_START) * CELL_HEIGHT}px` }}>
+                        {dayBlocks.map((block, blockIdx) => (
                           <div
+                            key={`${block.start.toISOString()}-${blockIdx}`}
                             className={cn(
-                              'absolute left-0 right-0 bg-destructive/85 border-l-2 border-destructive text-destructive-foreground flex items-center justify-center cursor-pointer hover:bg-destructive/95 transition-colors',
+                              'absolute left-0 right-0 bg-destructive/85 border-l-2 border-destructive text-destructive-foreground flex items-center justify-center cursor-pointer hover:bg-destructive/95 transition-colors rounded-md shadow-sm',
                               isPast && 'opacity-50'
                             )}
                             style={{
-                              top: `${block.topPercent}%`,
-                              height: `${block.heightPercent}%`
+                              top: `${block.topPx}px`,
+                              height: `${block.heightPx}px`,
+                              zIndex: 10
                             }}
+                            title={formatTimeRange(block.visibleStart, block.visibleEnd)}
                           >
                             <span className="text-xs font-semibold uppercase tracking-wide">
                               Busy
                             </span>
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-medium">{formatTimeRange(block.visibleStart, block.visibleEnd)}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}

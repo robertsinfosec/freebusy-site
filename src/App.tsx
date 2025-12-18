@@ -39,7 +39,7 @@ function ThemeToggle() {
 
   const cycleTheme = () => {
     const order: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
-    const current = theme ?? 'system'
+    const current: 'system' | 'light' | 'dark' = (theme === 'light' || theme === 'dark' || theme === 'system') ? theme : 'system'
     const next = order[(order.indexOf(current) + 1) % order.length]
     setTheme(next)
   }
@@ -116,7 +116,9 @@ function App() {
       }
 
       const corsProxy = 'https://corsproxy.io/?'
-      const response = await fetch(corsProxy + encodeURIComponent(icalUrl))
+      const bust = `cachebust=${Date.now()}`
+      const urlWithBust = icalUrl.includes('?') ? `${icalUrl}&${bust}` : `${icalUrl}?${bust}`
+      const response = await fetch(corsProxy + encodeURIComponent(urlWithBust))
       
       if (!response.ok) {
         throw new Error(`Failed to fetch calendar: ${response.statusText}`)
