@@ -27,7 +27,7 @@ export function CalendarGrid({
   showTimeLabels = true 
 }: CalendarGridProps) {
   const today = useMemo(() => getStartOfDay(new Date()), [])
-  const hours = Array.from({ length: 24 }, (_, i) => i)
+  const hours = Array.from({ length: 10 }, (_, i) => i + 8)
   const dates = useMemo(() => 
     Array.from({ length: days }, (_, i) => addDays(startDate, i)),
     [startDate, days]
