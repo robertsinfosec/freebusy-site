@@ -58,17 +58,17 @@ function ThemeToggle() {
     )
   }
 
-  const icon = effectiveTheme === 'dark'
-    ? <Moon size={18} />
-    : effectiveTheme === 'light'
+  const icon = theme === 'system'
+    ? <Monitor size={18} />
+    : theme === 'light'
       ? <SunDim size={18} />
-      : <Monitor size={18} />
+      : <Moon size={18} />
 
-  const label = effectiveTheme === 'dark'
-    ? 'Dark'
-    : effectiveTheme === 'light'
+  const label = theme === 'system'
+    ? 'System'
+    : theme === 'light'
       ? 'Light'
-      : 'System'
+      : 'Dark'
 
   return (
     <Button
@@ -89,12 +89,20 @@ function App() {
   const [busyBlocks, setBusyBlocks] = useState<BusyBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showThirdWeek, setShowThirdWeek] = useState(false)
+  const [showWeeks, setShowWeeks] = useState(2)
 
   const today = useMemo(() => getStartOfDay(new Date()), [])
   const currentWeekStart = useMemo(() => getStartOfWeek(today), [today])
   const nextWeekStart = useMemo(() => addDays(currentWeekStart, 7), [currentWeekStart])
   const thirdWeekStart = useMemo(() => addDays(currentWeekStart, 14), [currentWeekStart])
+  const fourthWeekStart = useMemo(() => addDays(currentWeekStart, 21), [currentWeekStart])
+
+  const weekStarts = useMemo(() => [
+    currentWeekStart,
+    nextWeekStart,
+    thirdWeekStart,
+    fourthWeekStart
+  ], [currentWeekStart, nextWeekStart, thirdWeekStart, fourthWeekStart])
 
   const fetchCalendar = async () => {
     setLoading(true)
@@ -217,83 +225,41 @@ function App() {
                 })}
               </CardTitle>
               <CardDescription>
-                Showing {showThirdWeek ? '3' : '2'} weeks of availability. 
+                Showing {showWeeks} week{showWeeks > 1 ? 's' : ''} of availability. 
                 {busyBlocks.length === 0 && ' No busy blocks scheduled.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <WeekSection
-                  startDate={currentWeekStart}
-                  busyBlocks={busyBlocks}
-                  opacity={1}
-                  showTimeLabels={true}
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-              >
-                <WeekSection
-                  startDate={nextWeekStart}
-                  busyBlocks={busyBlocks}
-                  opacity={1}
-                  showTimeLabels={true}
-                />
-              </motion.div>
-
-              <div className="relative">
-                <AnimatePresence mode="wait">
-                  {!showThirdWeek ? (
-                    <motion.div
-                      key="button"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="relative"
-                    >
-                      <WeekSection
-                        startDate={thirdWeekStart}
-                        busyBlocks={busyBlocks}
-                        opacity={0.3}
-                        showTimeLabels={true}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-                        <Button
-                          onClick={() => setShowThirdWeek(true)}
-                          size="lg"
-                          className="shadow-lg hover:shadow-accent/20"
-                        >
-                          <CaretDown size={20} className="mr-2" />
-                          Show More
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="weeks"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <WeekSection
-                        startDate={thirdWeekStart}
-                        busyBlocks={busyBlocks}
-                        opacity={1}
-                        showTimeLabels={true}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                {weekStarts.slice(0, showWeeks).map((start, idx) => (
+                  <motion.div
+                    key={start.toISOString()}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: idx * 0.05 }}
+                  >
+                    <WeekSection
+                      startDate={start}
+                      busyBlocks={busyBlocks}
+                      opacity={1}
+                      showTimeLabels={true}
+                    />
+                  </motion.div>
+                ))}
               </div>
+
+              {showWeeks < 4 && (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={() => setShowWeeks(4)}
+                    size="lg"
+                    className="gap-2 shadow-lg hover:shadow-accent/20"
+                  >
+                    <CaretDown size={20} />
+                    Show More (up to 4 weeks)
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

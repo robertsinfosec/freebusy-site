@@ -2,10 +2,15 @@ export interface BusyBlock {
   start: Date
   end: Date
   summary?: string
+  isAllDay?: boolean
 }
 
-function parseICalDate(dateStr: string): Date {
-  if (dateStr.includes('T')) {
+type ParsedDate = { date: Date; isDateOnly: boolean }
+
+function parseICalDate(dateStr: string): ParsedDate {
+  const isDateOnly = !dateStr.includes('T')
+
+  if (!isDateOnly) {
     const year = parseInt(dateStr.substring(0, 4))
     const month = parseInt(dateStr.substring(4, 6)) - 1
     const day = parseInt(dateStr.substring(6, 8))
@@ -14,19 +19,20 @@ function parseICalDate(dateStr: string): Date {
     const second = parseInt(dateStr.substring(13, 15))
     
     if (dateStr.endsWith('Z')) {
-      return new Date(Date.UTC(year, month, day, hour, minute, second))
+      return { date: new Date(Date.UTC(year, month, day, hour, minute, second)), isDateOnly }
     }
-    return new Date(year, month, day, hour, minute, second)
-  } else {
-    const year = parseInt(dateStr.substring(0, 4))
-    const month = parseInt(dateStr.substring(4, 6)) - 1
-    const day = parseInt(dateStr.substring(6, 8))
-    return new Date(year, month, day)
+    return { date: new Date(year, month, day, hour, minute, second), isDateOnly }
   }
+
+  const year = parseInt(dateStr.substring(0, 4))
+  const month = parseInt(dateStr.substring(4, 6)) - 1
+  const day = parseInt(dateStr.substring(6, 8))
+  return { date: new Date(year, month, day), isDateOnly }
 }
 
-function convertToLocalTime(utcDate: Date): Date {
-  const localTimeStr = utcDate.toLocaleString('en-US', { timeZone: 'America/New_York' })
+function convertToLocalTime(sourceDate: Date, isDateOnly: boolean): Date {
+  if (isDateOnly) return sourceDate
+  const localTimeStr = sourceDate.toLocaleString('en-US', { timeZone: 'America/New_York' })
   return new Date(localTimeStr)
 }
 
@@ -35,7 +41,7 @@ export function parseICalData(icalText: string): BusyBlock[] {
   const events: BusyBlock[] = []
   
   let inEvent = false
-  let currentEvent: Partial<BusyBlock> & { summary?: string } = {}
+  let currentEvent: Partial<BusyBlock> & { summary?: string; startIsDateOnly?: boolean; endIsDateOnly?: boolean } = {}
   
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim()
@@ -50,23 +56,38 @@ export function parseICalData(icalText: string): BusyBlock[] {
       currentEvent = {}
     } else if (line === 'END:VEVENT' && inEvent) {
       if (currentEvent.start && currentEvent.end) {
+        const start = convertToLocalTime(currentEvent.start, !!currentEvent.startIsDateOnly)
+        const endRaw = convertToLocalTime(currentEvent.end, !!currentEvent.endIsDateOnly)
+        const isAllDay = !!currentEvent.startIsDateOnly
+
+        const end = isAllDay && endRaw.getTime() === start.getTime()
+          ? new Date(start.getTime() + 24 * 60 * 60 * 1000)
+          : endRaw
+
         events.push({
-          start: convertToLocalTime(currentEvent.start),
-          end: convertToLocalTime(currentEvent.end),
-          summary: currentEvent.summary
+          start,
+          end,
+          summary: currentEvent.summary,
+          isAllDay
         })
       }
       inEvent = false
     } else if (inEvent) {
       if (line.startsWith('DTSTART')) {
         const dateMatch = line.match(/[:;](\d{8}T?\d{6}Z?)/)
+        const isDateOnly = line.includes('VALUE=DATE') || !line.includes('T')
         if (dateMatch) {
-          currentEvent.start = parseICalDate(dateMatch[1])
+          const parsed = parseICalDate(dateMatch[1])
+          currentEvent.start = parsed.date
+          currentEvent.startIsDateOnly = isDateOnly || parsed.isDateOnly
         }
       } else if (line.startsWith('DTEND')) {
         const dateMatch = line.match(/[:;](\d{8}T?\d{6}Z?)/)
+        const isDateOnly = line.includes('VALUE=DATE') || !line.includes('T')
         if (dateMatch) {
-          currentEvent.end = parseICalDate(dateMatch[1])
+          const parsed = parseICalDate(dateMatch[1])
+          currentEvent.end = parsed.date
+          currentEvent.endIsDateOnly = isDateOnly || parsed.isDateOnly
         }
       } else if (line.startsWith('SUMMARY:')) {
         currentEvent.summary = line.substring(8)

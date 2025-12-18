@@ -35,6 +35,10 @@ export function CalendarGrid({
     [startDate, days]
   )
 
+  const getAllDayBlocksForDate = (date: Date) => {
+    return busyBlocks.filter(block => block.isAllDay && isSameDay(block.start, date))
+  }
+
   const getBusyBlocksForCell = (date: Date, hour: number) => {
     const cellStart = new Date(date)
     cellStart.setHours(hour, 0, 0, 0)
@@ -42,6 +46,7 @@ export function CalendarGrid({
     cellEnd.setHours(hour + 1, 0, 0, 0)
 
     return busyBlocks.filter(block => {
+      if (block.isAllDay) return false
       return block.start < cellEnd && block.end > cellStart
     }).map(block => {
       const blockStart = new Date(Math.max(block.start.getTime(), cellStart.getTime()))
@@ -56,6 +61,9 @@ export function CalendarGrid({
       
       return {
         ...block,
+        // use the clipped range for rendering and tooltips
+        visibleStart: blockStart,
+        visibleEnd: blockEnd,
         topPercent,
         heightPercent
       }
@@ -106,6 +114,7 @@ export function CalendarGrid({
               
               {dates.map((date, dateIdx) => {
                 const blocks = getBusyBlocksForCell(date, hour)
+                const allDayBlocks = getAllDayBlocksForDate(date)
                 const isWorking = isWorkingHour(hour, date)
                 const isWeekendDay = isWeekend(date)
                 const isPast = date < today || (isSameDay(date, today) && hour < new Date().getHours())
@@ -120,12 +129,29 @@ export function CalendarGrid({
                       isPast && 'opacity-40'
                     )}
                   >
+                    {hour === hours[0] && allDayBlocks.length > 0 && (
+                      <div className="absolute top-1 left-1 right-1 z-20 flex flex-col gap-1">
+                        {allDayBlocks.map((block, idx) => (
+                          <Tooltip key={`allday-${block.start.toISOString()}-${idx}`}>
+                            <TooltipTrigger asChild>
+                              <div className="rounded-md bg-destructive/85 text-destructive-foreground px-2 py-1 text-xs font-semibold uppercase tracking-wide shadow-sm">
+                                {block.summary || 'All day busy'}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">All day</p>
+                              {block.summary && <p className="text-sm text-muted-foreground">{block.summary}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    )}
                     {blocks.map((block, blockIdx) => (
-                      <Tooltip key={blockIdx}>
+                      <Tooltip key={`${block.start.toISOString()}-${blockIdx}`}>
                         <TooltipTrigger asChild>
                           <div
                             className={cn(
-                              'absolute left-0 right-0 bg-primary/80 border-l-2 border-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors',
+                              'absolute left-0 right-0 bg-destructive/85 border-l-2 border-destructive text-destructive-foreground flex items-center justify-center cursor-pointer hover:bg-destructive/95 transition-colors',
                               isPast && 'opacity-50'
                             )}
                             style={{
@@ -133,13 +159,13 @@ export function CalendarGrid({
                               height: `${block.heightPercent}%`
                             }}
                           >
-                            <span className="text-xs font-semibold text-primary-foreground uppercase tracking-wide">
+                            <span className="text-xs font-semibold uppercase tracking-wide">
                               Busy
                             </span>
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="font-medium">{formatTimeRange(block.start, block.end)}</p>
+                          <p className="font-medium">{formatTimeRange(block.visibleStart, block.visibleEnd)}</p>
                         </TooltipContent>
                       </Tooltip>
                     ))}
