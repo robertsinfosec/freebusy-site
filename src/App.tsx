@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WeekSection } from '@/components/WeekSection'
 import { mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
 import { getStartOfDay, getStartOfWeek, addDays } from '@/lib/date-utils'
-import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus, SunDim, Moon, Monitor, ClockAfternoon } from '@phosphor-icons/react'
+import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus, SunDim, Moon, Monitor, ClockAfternoon, CalendarX } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from 'next-themes'
 
@@ -88,7 +87,8 @@ function ThemeToggle() {
 function App() {
   const [busyBlocks, setBusyBlocks] = useState<BusyBlock[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [disabledMessage, setDisabledMessage] = useState<string | null>(null)
+  const [unavailableMessage, setUnavailableMessage] = useState<string | null>(null)
   const [showWeeks, setShowWeeks] = useState(2)
 
   const today = useMemo(() => getStartOfDay(new Date()), [])
@@ -106,7 +106,7 @@ function App() {
 
   const fetchCalendar = async () => {
     setLoading(true)
-    setError(null)
+    // preserve disabled/unavailable messages until a successful fetch clears them
 
     try {
       const apiUrl = import.meta.env.VITE_FREEBUSY_API || 'http://localhost:8787/freebusy'
@@ -116,11 +116,31 @@ function App() {
         headers: { Accept: 'application/json' }
       })
 
+      if (response.status === 503) {
+        const data = await response.json().catch(() => ({})) as { error?: string }
+        if (data.error === 'disabled') {
+          setDisabledMessage('Free/busy time is not being shared right now.')
+          setUnavailableMessage(null)
+          setBusyBlocks([])
+          return
+        }
+        setUnavailableMessage('There was a problem getting availability. Please try again later.')
+        setDisabledMessage(null)
+        setBusyBlocks([])
+        return
+      }
+
       if (response.status === 429) {
-        throw new Error('Rate limited. Please try again in a few minutes.')
+        setUnavailableMessage('There was a problem getting availability. Please try again later.')
+        setDisabledMessage(null)
+        setBusyBlocks([])
+        return
       }
       if (!response.ok) {
-        throw new Error(`Failed to fetch calendar: ${response.status}`)
+        setUnavailableMessage('There was a problem getting availability. Please try again later.')
+        setDisabledMessage(null)
+        setBusyBlocks([])
+        return
       }
 
       const data = await response.json() as {
@@ -135,8 +155,12 @@ function App() {
 
       const merged = mergeBusyBlocks(events)
       setBusyBlocks(merged)
+      setDisabledMessage(null)
+      setUnavailableMessage(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load calendar')
+      setUnavailableMessage('There was a problem getting availability. Please try again later.')
+      setDisabledMessage(null)
+      setBusyBlocks([])
     } finally {
       setLoading(false)
     }
@@ -195,24 +219,6 @@ function App() {
           </div>
         </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <Warning size={20} className="mt-0.5" />
-            <AlertDescription className="ml-2">
-              {error}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchCalendar}
-                className="ml-4"
-              >
-                <ArrowClockwise size={16} className="mr-2" />
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
         {loading ? (
           <Card>
             <CardHeader>
@@ -237,42 +243,69 @@ function App() {
                 })}
               </CardTitle>
               <CardDescription>
-                Showing {showWeeks} week{showWeeks > 1 ? 's' : ''} of availability. 
-                {busyBlocks.length === 0 && ' No busy blocks scheduled.'}
+              {disabledMessage
+                ? 'Free/busy sharing is currently disabled.'
+                : unavailableMessage
+                  ? 'We had trouble fetching availability. Please try again later.'
+                  : <>
+                      Showing {showWeeks} week{showWeeks > 1 ? 's' : ''} of availability.
+                      {busyBlocks.length === 0 && ' No busy blocks scheduled.'}
+                    </>
+              }
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                {weekStarts.slice(0, showWeeks).map((start, idx) => (
-                  <motion.div
-                    key={start.toISOString()}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: idx * 0.05 }}
-                  >
-                    <WeekSection
-                      startDate={start}
-                      busyBlocks={busyBlocks}
-                      opacity={1}
-                      showTimeLabels={true}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-
-              {showWeeks < 4 && (
-                <div className="flex justify-center">
-                  <Button
-                    onClick={() => setShowWeeks(4)}
-                    size="lg"
-                    className="gap-2 shadow-lg hover:shadow-accent/20"
-                  >
-                    <CaretDown size={20} />
-                    Show More (up to 4 weeks)
-                  </Button>
+              <CardContent className="space-y-6">
+              {disabledMessage ? (
+                <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 p-12 text-center text-base text-muted-foreground">
+                  <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary/15 text-primary shadow-inner shadow-primary/10">
+                    <CalendarX size={64} weight="duotone" />
+                  </div>
+                  <p className="font-semibold text-lg text-foreground">Free/busy sharing is turned off.</p>
+                  <p className="mt-2 text-base">{disabledMessage}</p>
                 </div>
-              )}
-            </CardContent>
+              ) : unavailableMessage ? (
+                <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 p-12 text-center text-base text-muted-foreground">
+                  <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-amber-200/70 text-amber-800 ring-1 ring-amber-200 shadow-inner shadow-amber-200/50 dark:bg-amber-300/70 dark:text-amber-950 dark:ring-amber-400/60">
+                    <Warning size={64} weight="duotone" />
+                  </div>
+                  <p className="font-semibold text-lg text-foreground">We couldn’t load availability.</p>
+                  <p className="mt-2 text-base">{unavailableMessage}</p>
+                </div>
+              ) : (
+                  <>
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                      {weekStarts.slice(0, showWeeks).map((start, idx) => (
+                        <motion.div
+                          key={start.toISOString()}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25, delay: idx * 0.05 }}
+                        >
+                          <WeekSection
+                            startDate={start}
+                            busyBlocks={busyBlocks}
+                            opacity={1}
+                            showTimeLabels={true}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {showWeeks < 4 && (
+                      <div className="flex justify-center">
+                        <Button
+                          onClick={() => setShowWeeks(4)}
+                          size="lg"
+                          className="gap-2 shadow-lg hover:shadow-accent/20"
+                        >
+                          <CaretDown size={20} />
+                          Show More (up to 4 weeks)
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
           </Card>
         )}
 
