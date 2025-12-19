@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WeekSection } from '@/components/WeekSection'
-import { parseICalData, mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
+import { mergeBusyBlocks, BusyBlock } from '@/lib/ical-parser'
 import { getStartOfDay, getStartOfWeek, addDays } from '@/lib/date-utils'
 import { Calendar, CaretDown, Warning, ArrowClockwise, CalendarPlus, SunDim, Moon, Monitor, ClockAfternoon } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -109,25 +109,31 @@ function App() {
     setError(null)
 
     try {
-      const icalUrl = import.meta.env.VITE_ICAL_URL || import.meta.env.ICAL_URL
+      const apiUrl = import.meta.env.VITE_FREEBUSY_API || 'http://localhost:8787/freebusy'
 
-      if (!icalUrl) {
-        throw new Error('ICAL_URL environment variable is not set')
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+      })
+
+      if (response.status === 429) {
+        throw new Error('Rate limited. Please try again in a few minutes.')
       }
-
-      const corsProxy = 'https://corsproxy.io/?'
-      const bust = `cachebust=${Date.now()}`
-      const urlWithBust = icalUrl.includes('?') ? `${icalUrl}&${bust}` : `${icalUrl}?${bust}`
-      const response = await fetch(corsProxy + encodeURIComponent(urlWithBust))
-      
       if (!response.ok) {
-        throw new Error(`Failed to fetch calendar: ${response.statusText}`)
+        throw new Error(`Failed to fetch calendar: ${response.status}`)
       }
 
-      const icalText = await response.text()
-      const events = parseICalData(icalText)
+      const data = await response.json() as {
+        busy: Array<{ start: string; end: string }>
+      }
+
+      const events: BusyBlock[] = data.busy.map(item => ({
+        start: new Date(item.start),
+        end: new Date(item.end),
+        isAllDay: false
+      }))
+
       const merged = mergeBusyBlocks(events)
-      
       setBusyBlocks(merged)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load calendar')
