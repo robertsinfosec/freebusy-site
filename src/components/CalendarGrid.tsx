@@ -29,6 +29,7 @@ export function CalendarGrid({
   showTimeLabels = true 
 }: CalendarGridProps) {
   const today = useMemo(() => getStartOfDay(new Date()), [])
+  const now = new Date()
   const WORK_START = 8
   const WORK_END = 18
   const CELL_HEIGHT = 48
@@ -113,7 +114,7 @@ export function CalendarGrid({
               {dates.map((date, dateIdx) => {
                 const isWorking = isWorkingHour(hour, date)
                 const isWeekendDay = isWeekend(date)
-                const isPast = date < today || (isSameDay(date, today) && hour < new Date().getHours())
+                const isPast = date < today || (isSameDay(date, today) && hour < now.getHours())
                 const isFirstHour = hour === WORK_START
                 const dayBlocks = isFirstHour ? getDayBlocks(date) : []
                 
@@ -124,7 +125,7 @@ export function CalendarGrid({
                       'relative min-h-[48px] border-r border-b border-border',
                       !isWorking && 'bg-muted/10',
                       isWeekendDay && 'bg-muted/30',
-                      isPast && 'opacity-40'
+                      isPast && 'bg-muted/10'
                     )}
                   >
                     {isFirstHour && (
@@ -134,7 +135,7 @@ export function CalendarGrid({
                             key={`${block.start.toISOString()}-${blockIdx}`}
                             className={cn(
                               'absolute left-0 right-0 bg-destructive/85 border-l-2 border-destructive text-destructive-foreground flex items-center justify-center cursor-pointer hover:bg-destructive/95 transition-colors rounded-md shadow-sm',
-                              isPast && 'opacity-50'
+                              block.visibleEnd <= now && 'opacity-50'
                             )}
                             style={{
                               top: `${block.topPx}px`,
