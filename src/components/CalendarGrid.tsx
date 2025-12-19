@@ -84,13 +84,13 @@ export function CalendarGrid({
               <div
                 key={idx}
                 className={cn(
-                  'border-b border-border p-2 text-center text-sm font-semibold tracking-wide',
+                  'border-b border-border p-2 text-center text-xs sm:text-sm font-semibold tracking-wide whitespace-nowrap leading-tight',
                   isWeekendDay && 'bg-muted/30',
-                  isToday && 'bg-accent/20 current-day-pulse'
+                  isToday && 'bg-primary/15 ring-1 ring-primary/40 current-day-pulse'
                 )}
               >
                 <div className={cn(
-                  isToday && 'text-accent',
+                  isToday ? 'text-primary' : undefined,
                   isWeekendDay && !isToday && 'text-muted-foreground'
                 )}>
                   {formatDateHeader(date)}
