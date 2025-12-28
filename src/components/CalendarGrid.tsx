@@ -71,6 +71,42 @@ export function CalendarGrid({
     return ownerDays.map(d => new Date(d.startUtcMs))
   }, [ownerDays])
 
+  const viewWorkIntervalsByDayIdx = useMemo(() => {
+    // Working hours mapped into the *viewer* timezone, represented as minutes-of-day.
+    // Note: if a rule maps across midnight in the viewer TZ, we extend endMin past 1440.
+    return ownerDays.map((day) => {
+      if (!hasWorkingHours) {
+        return { startMin: DEFAULT_VIEW_START * 60, endMin: DEFAULT_VIEW_END * 60 }
+      }
+
+      const rule = scheduleByIsoWeekday.get(day.dayOfWeek)
+      if (!rule) return null
+
+      const ymd = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(day.ownerDate)
+      if (!ymd) return null
+      const year = Number(ymd[1])
+      const month = Number(ymd[2])
+      const dom = Number(ymd[3])
+
+      const startHour = Math.floor(rule.startMin / 60)
+      const startMinute = rule.startMin % 60
+      const endHour = Math.floor(rule.endMin / 60)
+      const endMinute = rule.endMin % 60
+
+      const ownerStartInstant = makeDateInTimeZone({ year, month, day: dom, hour: startHour, minute: startMinute, second: 0 }, ownerTimeZone)
+      const ownerEndInstant = makeDateInTimeZone({ year, month, day: dom, hour: endHour, minute: endMinute, second: 0 }, ownerTimeZone)
+
+      const viewStart = getTimeZoneParts(ownerStartInstant, viewTimeZone)
+      const viewEnd = getTimeZoneParts(ownerEndInstant, viewTimeZone)
+
+      const viewStartMin = viewStart.hour * 60 + viewStart.minute
+      let viewEndMin = viewEnd.hour * 60 + viewEnd.minute
+      if (viewEndMin <= viewStartMin) viewEndMin += 24 * 60
+
+      return { startMin: viewStartMin, endMin: viewEndMin }
+    })
+  }, [DEFAULT_VIEW_END, DEFAULT_VIEW_START, hasWorkingHours, ownerDays, ownerTimeZone, scheduleByIsoWeekday, viewTimeZone])
+
   const { workStartHour, workEndHour } = useMemo(() => {
     let minMinute = DEFAULT_VIEW_START * 60
     let maxMinute = DEFAULT_VIEW_END * 60
@@ -132,18 +168,22 @@ export function CalendarGrid({
           {ownerDays.map((day, idx) => {
             const dayHasAvailability = !hasWorkingHours || scheduleByIsoWeekday.has(day.dayOfWeek)
             const isToday = day.ownerDate === todayOwnerDate
+            const fullLabel = formatDateHeaderInTimeZone(ownerDateStarts[idx], ownerTimeZone)
             
             return (
               <div
                 key={idx}
                 className={cn(
-                  'border-b border-border p-2 text-center text-xs sm:text-sm tracking-wide whitespace-nowrap leading-tight',
+                  'border-b border-border p-2 text-center text-[0.7rem] tracking-wide leading-tight min-w-0',
                   !dayHasAvailability && 'fb-day-header-unavailable',
                   isToday && 'bg-primary/15 ring-1 ring-primary/40 current-day-pulse border-l-[3px] border-l-foreground/40 dark:border-l-foreground/60'
                 )}
               >
-                <div className={cn(!dayHasAvailability && 'text-muted-foreground')}>
-                  {formatDateHeaderInTimeZone(ownerDateStarts[idx], ownerTimeZone)}
+                <div
+                  className={cn('truncate', !dayHasAvailability && 'text-muted-foreground')}
+                  title={fullLabel}
+                >
+                  {fullLabel}
                 </div>
               </div>
             )
@@ -163,37 +203,21 @@ export function CalendarGrid({
               {ownerDays.map((day, dayIdx) => {
                 const isTodayColumn = day.ownerDate === todayOwnerDate
 
-                const isAvailable = (() => {
-                  if (!hasWorkingHours) {
-                    return hour >= DEFAULT_VIEW_START && hour < DEFAULT_VIEW_END
-                  }
+                const availability = (() => {
+                  const interval = viewWorkIntervalsByDayIdx[dayIdx]
+                  if (!interval) return { kind: 'none' as const }
 
-                  const rule = scheduleByIsoWeekday.get(day.dayOfWeek)
-                  if (!rule) return false
+                  const cellStartMin = hour * 60
+                  const cellEndMin = cellStartMin + 60
+                  const overlapStart = Math.max(cellStartMin, interval.startMin)
+                  const overlapEnd = Math.min(cellEndMin, interval.endMin)
 
-                  const ymd = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(day.ownerDate)
-                  if (!ymd) return false
-                  const year = Number(ymd[1])
-                  const month = Number(ymd[2])
-                  const dom = Number(ymd[3])
+                  if (overlapEnd <= overlapStart) return { kind: 'none' as const }
+                  if (overlapStart <= cellStartMin && overlapEnd >= cellEndMin) return { kind: 'full' as const }
 
-                  const startHour = Math.floor(rule.startMin / 60)
-                  const startMinute = rule.startMin % 60
-                  const endHour = Math.floor(rule.endMin / 60)
-                  const endMinute = rule.endMin % 60
-
-                  const ownerStartInstant = makeDateInTimeZone({ year, month, day: dom, hour: startHour, minute: startMinute, second: 0 }, ownerTimeZone)
-                  const ownerEndInstant = makeDateInTimeZone({ year, month, day: dom, hour: endHour, minute: endMinute, second: 0 }, ownerTimeZone)
-
-                  const viewStart = getTimeZoneParts(ownerStartInstant, viewTimeZone)
-                  const viewEnd = getTimeZoneParts(ownerEndInstant, viewTimeZone)
-
-                  const viewStartMin = viewStart.hour * 60 + viewStart.minute
-                  let viewEndMin = viewEnd.hour * 60 + viewEnd.minute
-                  if (viewEndMin <= viewStartMin) viewEndMin += 24 * 60
-
-                  const mins = hour * 60
-                  return mins >= viewStartMin && mins < viewEndMin
+                  const topPct = ((overlapStart - cellStartMin) / 60) * 100
+                  const heightPct = ((overlapEnd - overlapStart) / 60) * 100
+                  return { kind: 'partial' as const, topPct, heightPct }
                 })()
 
                 const isFirstHour = hour === workStartHour
@@ -213,10 +237,16 @@ export function CalendarGrid({
                     key={`${dayIdx}-${hour}`}
                     className={cn(
                       'relative min-h-[48px] border-r border-b border-border',
-                      isAvailable ? 'fb-cell-available' : 'fb-cell-unavailable',
+                      availability.kind === 'full' ? 'fb-cell-available' : 'fb-cell-unavailable',
                       isTodayColumn && 'border-l-[3px] border-l-foreground/40 dark:border-l-foreground/60'
                     )}
                   >
+                    {availability.kind === 'partial' ? (
+                      <div
+                        className="absolute left-0 right-0 fb-cell-available pointer-events-none"
+                        style={{ top: `${availability.topPct}%`, height: `${availability.heightPct}%` }}
+                      />
+                    ) : null}
                     {isFirstHour && (
                       <div className="absolute left-0 right-0" style={{ top: 0, height: `${(workEndHour - workStartHour) * CELL_HEIGHT}px` }}>
                         {dayBlocks.map((block, blockIdx) => (

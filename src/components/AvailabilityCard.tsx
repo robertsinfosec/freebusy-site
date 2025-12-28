@@ -1,9 +1,13 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarX, Warning } from '@phosphor-icons/react'
+import { ArrowClockwise, CalendarX, CaretDown, CopySimple, DotsThreeVertical, DownloadSimple, Warning } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { WeekSection } from '@/components/WeekSection'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 import type { OwnerDay, ParsedBusyInterval, WorkingHoursDayRuleDto } from '@/hooks/freebusy-utils'
 
@@ -17,6 +21,11 @@ interface AvailabilityCardProps {
   ownerTimeZone: string
   weekStartDay?: number | null
   workingHoursWeekly?: WorkingHoursDayRuleDto[] | null
+
+  onRefresh: () => void
+  refreshDisabledUntil?: string | null
+  availabilityExportText?: string | null
+  availabilityExportFileName?: string | null
 }
 
 export function AvailabilityCard({
@@ -28,8 +37,14 @@ export function AvailabilityCard({
   viewTimeZone,
   ownerTimeZone,
   weekStartDay = null,
-  workingHoursWeekly = null
+  workingHoursWeekly = null,
+  onRefresh,
+  refreshDisabledUntil = null,
+  availabilityExportText = null,
+  availabilityExportFileName = null
 }: AvailabilityCardProps) {
+  const isMobile = useIsMobile()
+
   const monthLabel = useMemo(() => (
     today.toLocaleDateString('en-US', {
       month: 'long',
@@ -45,6 +60,68 @@ export function AvailabilityCard({
     return busy.length === 0 ? 'No busy blocks scheduled.' : null
   }, [busy.length, disabledMessage, unavailableMessage])
 
+  const exportDisabled = !availabilityExportText
+
+  const now = Date.now()
+  const disabledUntilMs = refreshDisabledUntil ? new Date(refreshDisabledUntil).getTime() : null
+  const rateLimited = disabledUntilMs !== null && Number.isFinite(disabledUntilMs) && disabledUntilMs > now
+  const refreshTitle = rateLimited && disabledUntilMs
+    ? `Rate limited until ${new Date(disabledUntilMs).toLocaleTimeString('en-US', { timeZone: viewTimeZone })}`
+    : 'Refresh'
+
+  const refreshDisabled = rateLimited
+
+  const copyAvailability = async () => {
+    if (!availabilityExportText) return
+
+    const success = async (): Promise<boolean> => {
+      try {
+        await globalThis.navigator?.clipboard?.writeText(availabilityExportText)
+        return true
+      } catch {
+        // Fall back
+      }
+
+      try {
+        const el = document.createElement('textarea')
+        el.value = availabilityExportText
+        el.setAttribute('readonly', 'true')
+        el.style.position = 'fixed'
+        el.style.left = '-9999px'
+        el.style.top = '0'
+        document.body.appendChild(el)
+        el.select()
+        const ok = document.execCommand('copy')
+        document.body.removeChild(el)
+        return ok
+      } catch {
+        return false
+      }
+    }
+
+    const ok = await success()
+    if (ok) toast.success('Copied to clipboard')
+    else toast.error('Could not copy')
+  }
+
+  const downloadAvailability = () => {
+    if (!availabilityExportText) return
+
+    const fileName = availabilityExportFileName || 'availability.txt'
+    const blob = new Blob([availabilityExportText], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -54,6 +131,82 @@ export function AvailabilityCard({
         <CardDescription>
           {description}
         </CardDescription>
+        <CardAction>
+          {isMobile ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" aria-label="Availability actions" title="Actions">
+                  <DotsThreeVertical size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {!exportDisabled ? (
+                  <>
+                    <DropdownMenuItem onClick={copyAvailability}>
+                      <CopySimple size={16} />
+                      Copy
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={downloadAvailability}>
+                      <DownloadSimple size={16} />
+                      Download (.txt)
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
+                <DropdownMenuItem onClick={onRefresh} disabled={refreshDisabled} title={refreshTitle}>
+                  <ArrowClockwise size={16} />
+                  Refresh
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {!exportDisabled ? (
+                <div className="inline-flex">
+                  <Button
+                    onClick={copyAvailability}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-r-none"
+                    title="Copy availability"
+                  >
+                    <CopySimple size={16} />
+                    Copy
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-l-none border-l-0 px-2"
+                        aria-label="Copy options"
+                        title="More copy options"
+                      >
+                        <CaretDown size={16} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={downloadAvailability}>
+                        <DownloadSimple size={16} />
+                        Download (.txt)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : null}
+              <Button
+                onClick={onRefresh}
+                disabled={refreshDisabled}
+                variant="outline"
+                size="sm"
+                title={refreshTitle}
+              >
+                <ArrowClockwise size={16} />
+                Refresh
+              </Button>
+            </div>
+          )}
+        </CardAction>
       </CardHeader>
       <CardContent className="space-y-6">
         {disabledMessage ? (

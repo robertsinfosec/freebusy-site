@@ -1,4 +1,4 @@
-import { ArrowClockwise, Calendar, CalendarPlus, ClockAfternoon } from '@phosphor-icons/react'
+import { Calendar, CalendarPlus } from '@phosphor-icons/react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,34 +8,26 @@ import { labelForUsTimeZone, US_TIME_ZONES } from '@/lib/us-timezones'
 
 interface AppHeaderProps {
   loading: boolean
-  onRefresh: () => void
-  refreshDisabledUntil?: string | null
   timeZone: string | null
   onTimeZoneChange?: (timeZone: string) => void
   calendarTimeZone: string | null
+  showTimeZoneSelect?: boolean
+  showAvailabilityDescription?: boolean
 }
 
 export function AppHeader({
   loading,
-  onRefresh,
-  refreshDisabledUntil = null,
   timeZone,
   onTimeZoneChange,
-  calendarTimeZone
+  calendarTimeZone,
+  showTimeZoneSelect = true,
+  showAvailabilityDescription = true
 }: AppHeaderProps) {
-  const now = Date.now()
-  const disabledUntilMs = refreshDisabledUntil ? new Date(refreshDisabledUntil).getTime() : null
-  const rateLimited = disabledUntilMs !== null && Number.isFinite(disabledUntilMs) && disabledUntilMs > now
-  const refreshDisabled = loading || rateLimited
-
   const viewingTimeZone = timeZone ?? calendarTimeZone
-
-  const refreshTitle = rateLimited && disabledUntilMs
-    ? `Rate limited until ${new Date(disabledUntilMs).toLocaleTimeString('en-US', { timeZone: viewingTimeZone ?? 'Etc/UTC' })}`
-    : 'Refresh'
 
   const viewLabel = viewingTimeZone ? labelForUsTimeZone(viewingTimeZone) : '—'
   const calendarLabel = calendarTimeZone ? labelForUsTimeZone(calendarTimeZone) : '—'
+
 
   return (
     <div className="mb-8">
@@ -48,50 +40,47 @@ export function AppHeader({
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <ThemeToggle />
-          <Select
-            value={viewingTimeZone ?? undefined}
-            onValueChange={(value) => onTimeZoneChange?.(value)}
-            disabled={!viewingTimeZone}
-          >
-            <SelectTrigger className="w-[190px]" aria-label="Viewing timezone">
-              <SelectValue placeholder="Timezone" />
-            </SelectTrigger>
-            <SelectContent>
-              {US_TIME_ZONES.map(tz => (
-                <SelectItem key={tz.id} value={tz.id}>
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span>{tz.label}</span>
-                    {calendarTimeZone && tz.id === calendarTimeZone ? (
-                      <Badge variant="secondary">Owner TZ</Badge>
-                    ) : null}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {showTimeZoneSelect ? (
+            <Select
+              value={viewingTimeZone ?? undefined}
+              onValueChange={(value) => onTimeZoneChange?.(value)}
+              disabled={!viewingTimeZone}
+            >
+              <SelectTrigger className="w-[190px]" aria-label="Viewing timezone">
+                <SelectValue placeholder="Timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {US_TIME_ZONES.map(tz => (
+                  <SelectItem key={tz.id} value={tz.id}>
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span>{tz.label}</span>
+                      {calendarTimeZone && tz.id === calendarTimeZone ? (
+                        <Badge variant="secondary">Owner TZ</Badge>
+                      ) : null}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
           <Button asChild variant="default" size="sm" className="gap-2">
             <a href="https://cal.com/robertsinfosec" target="_blank" rel="noopener noreferrer">
               <CalendarPlus size={16} />
               Book a Meeting
             </a>
           </Button>
-          <Button
-            onClick={onRefresh}
-            disabled={refreshDisabled}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            title={refreshTitle}
-          >
-            <ArrowClockwise size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </Button>
         </div>
       </div>
-      <p className="text-muted-foreground text-base">
-        Real-time availability from my scheduling calendar. Times are shown in {viewLabel}.
-        Unshaded areas are working hours. Shaded areas are not available.
-      </p>
+      <div className="text-muted-foreground text-base">
+        <p>
+          Real-time view of my scheduling availability.
+        </p>
+        {showAvailabilityDescription ? (
+          <p>
+            Times are shown in {viewLabel}. Unshaded areas are working hours. Shaded areas are not available.
+          </p>
+        ) : null}
+      </div>
     </div>
   )
 }

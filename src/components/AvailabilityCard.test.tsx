@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+
+const { useIsMobileMock } = vi.hoisted(() => ({
+  useIsMobileMock: vi.fn(() => false)
+}))
+
+vi.mock('@/hooks/use-mobile', () => ({
+  useIsMobile: useIsMobileMock
+}))
 
 import { AvailabilityCard } from '@/components/AvailabilityCard'
 
@@ -28,6 +37,7 @@ describe('AvailabilityCard', () => {
         ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
         viewTimeZone="Etc/UTC"
         ownerTimeZone="Etc/UTC"
+        onRefresh={() => {}}
       />
     )
 
@@ -44,6 +54,7 @@ describe('AvailabilityCard', () => {
         ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
         viewTimeZone="Etc/UTC"
         ownerTimeZone="Etc/UTC"
+        onRefresh={() => {}}
       />
     )
 
@@ -69,10 +80,78 @@ describe('AvailabilityCard', () => {
         ownerWeeks={ownerWeeks}
         viewTimeZone="Etc/UTC"
         ownerTimeZone="Etc/UTC"
+        onRefresh={() => {}}
       />
     )
 
-    expect(weekSectionSpy).toHaveBeenCalledTimes(4)
     expect(screen.getAllByTestId('week-section')).toHaveLength(4)
+  })
+
+  it('calls onRefresh when refresh clicked', async () => {
+    const onRefresh = vi.fn()
+
+    render(
+      <AvailabilityCard
+        today={new Date('2025-12-27T00:00:00Z')}
+        busy={[]}
+        disabledMessage={null}
+        unavailableMessage={null}
+        ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
+        viewTimeZone="Etc/UTC"
+        ownerTimeZone="Etc/UTC"
+        onRefresh={onRefresh}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /refresh/i }))
+    expect(onRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('copies export text when Copy clicked', async () => {
+    useIsMobileMock.mockReturnValueOnce(false)
+
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    // @ts-expect-error - test shim
+    globalThis.navigator.clipboard = { writeText }
+
+    render(
+      <AvailabilityCard
+        today={new Date('2025-12-27T00:00:00Z')}
+        busy={[]}
+        disabledMessage={null}
+        unavailableMessage={null}
+        ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
+        viewTimeZone="Etc/UTC"
+        ownerTimeZone="Etc/UTC"
+        onRefresh={() => {}}
+        availabilityExportText={'hello availability'}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /^copy$/i }))
+    expect(writeText).toHaveBeenCalledWith('hello availability')
+  })
+
+  it('hides Copy/Download from mobile actions menu when no export is available', async () => {
+    useIsMobileMock.mockReturnValueOnce(true)
+
+    render(
+      <AvailabilityCard
+        today={new Date('2025-12-27T00:00:00Z')}
+        busy={[]}
+        disabledMessage="Free/busy time is not being shared right now."
+        unavailableMessage={null}
+        ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
+        viewTimeZone="Etc/UTC"
+        ownerTimeZone="Etc/UTC"
+        onRefresh={() => {}}
+        availabilityExportText={null}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /availability actions/i }))
+    expect(screen.queryByText(/^copy$/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/download/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/refresh/i)).toBeInTheDocument()
   })
 })

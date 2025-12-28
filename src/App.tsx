@@ -5,13 +5,14 @@ import { AvailabilityCard } from '@/components/AvailabilityCard'
 import { AvailabilityLoadingCard } from '@/components/AvailabilityLoadingCard'
 import { useFreeBusy } from '@/hooks/use-freebusy'
 import { getStartOfDayInTimeZone } from '@/lib/date-utils'
+import { buildAvailabilityExportText } from '@/lib/availability-export'
 import { isSupportedUsTimeZone } from '@/lib/us-timezones'
 import { BUILD_VERSION } from '@/version.generated'
 
 const VIEW_TIMEZONE_STORAGE_KEY = 'freebusy.viewTimeZone'
 
 function App() {
-  const { busy, loading, disabledMessage, unavailableMessage, refresh, refreshDisabledUntil, ownerTimeZone, apiVersion, ownerWeeks, weekStartDay, workingHours } = useFreeBusy()
+  const { busy, loading, disabledMessage, unavailableMessage, refresh, refreshDisabledUntil, ownerTimeZone, apiVersion, ownerWeeks, weekStartDay, workingHours, window } = useFreeBusy()
 
   // Owner timezone is authoritative for the day columns.
   const ownerCalendarTimeZone = ownerTimeZone ?? null
@@ -53,6 +54,43 @@ function App() {
   const effectiveViewTimeZone = viewTimeZone ?? calendarTimeZone ?? 'America/New_York'
   const renderTimeZone = effectiveViewTimeZone
 
+  const hasAvailabilityData = useMemo(() => {
+    if (loading) return false
+    if (disabledMessage || unavailableMessage) return false
+    if (!ownerTimeZone) return false
+    return ownerWeeks.flat().length > 0
+  }, [disabledMessage, loading, ownerTimeZone, ownerWeeks, unavailableMessage])
+
+  const availabilityExportText = useMemo(() => {
+    if (loading) return null
+    if (disabledMessage || unavailableMessage) return null
+    if (!ownerTimeZone) return null
+
+    const allOwnerDays = ownerWeeks.flat()
+    if (allOwnerDays.length === 0) return null
+
+    return buildAvailabilityExportText({
+      ownerDays: allOwnerDays,
+      busy,
+      workingHoursWeekly: workingHours?.weekly ?? null,
+      ownerTimeZone,
+      viewTimeZone: renderTimeZone,
+      window,
+      generatedAtUtcMs: Date.now()
+    })
+  }, [busy, disabledMessage, loading, ownerTimeZone, ownerWeeks, renderTimeZone, unavailableMessage, workingHours?.weekly, window])
+
+  const availabilityExportFileName = useMemo(() => {
+    if (!availabilityExportText) return null
+
+    const start = window?.startDate ?? ownerWeeks.flat()[0]?.ownerDate
+    const end = window?.endDateInclusive ?? ownerWeeks.flat().at(-1)?.ownerDate
+    const tzSafe = renderTimeZone.replaceAll('/', '-')
+
+    const range = start && end ? `${start}-to-${end}` : 'availability'
+    return `availability-${range}-${tzSafe}.txt`
+  }, [availabilityExportText, ownerWeeks, renderTimeZone, window?.endDateInclusive, window?.startDate])
+
   const today = useMemo(
     () => getStartOfDayInTimeZone(new Date(), ownerCalendarTimeZone ?? renderTimeZone),
     [ownerCalendarTimeZone, renderTimeZone]
@@ -63,10 +101,10 @@ function App() {
       <div className="max-w-[1600px] mx-auto">
         <AppHeader
           loading={loading}
-          onRefresh={refresh}
-          refreshDisabledUntil={refreshDisabledUntil}
           timeZone={effectiveViewTimeZone}
           calendarTimeZone={calendarTimeZone}
+          showTimeZoneSelect={hasAvailabilityData}
+          showAvailabilityDescription={hasAvailabilityData}
           onTimeZoneChange={(tz) => {
             userHasChosenTimeZoneRef.current = true
             setViewTimeZone(tz)
@@ -91,6 +129,10 @@ function App() {
             ownerTimeZone={ownerCalendarTimeZone ?? 'Etc/UTC'}
             weekStartDay={weekStartDay}
             workingHoursWeekly={workingHours?.weekly ?? null}
+            onRefresh={refresh}
+            refreshDisabledUntil={refreshDisabledUntil}
+            availabilityExportText={availabilityExportText}
+            availabilityExportFileName={availabilityExportFileName}
           />
         )}
 
