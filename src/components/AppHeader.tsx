@@ -53,7 +53,7 @@ export function AppHeader({
             onValueChange={(value) => onTimeZoneChange?.(value)}
             disabled={!viewingTimeZone}
           >
-            <SelectTrigger className="w-[170px]" aria-label="Viewing timezone">
+            <SelectTrigger className="w-[190px]" aria-label="Viewing timezone">
               <SelectValue placeholder="Timezone" />
             </SelectTrigger>
             <SelectContent>
@@ -62,7 +62,7 @@ export function AppHeader({
                   <div className="flex w-full items-center justify-between gap-2">
                     <span>{tz.label}</span>
                     {calendarTimeZone && tz.id === calendarTimeZone ? (
-                      <Badge variant="secondary">Default</Badge>
+                      <Badge variant="secondary">Owner TZ</Badge>
                     ) : null}
                   </div>
                 </SelectItem>

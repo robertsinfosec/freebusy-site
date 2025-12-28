@@ -1,47 +1,57 @@
-import { mergeBusyBlocks, type BusyBlock } from '@/lib/ical-parser'
-import { getTimeZoneParts } from '@/lib/date-utils'
+import { getTimeZoneIsoWeekday, makeDateInTimeZone } from '@/lib/date-utils'
+
+export type BusyKindDto = 'time' | 'allDay'
 
 export interface BusyIntervalDto {
-  start: string
-  end: string
+  startUtc: string
+  endUtc: string
+  kind: BusyKindDto
+}
+
+export interface CalendarContextDto {
+  timeZone: string
+  weekStartDay: number // 1=Mon ... 7=Sun
 }
 
 export interface WindowDto {
-  start: string
-  end: string
+  // Owner-local dates
+  startDate: string // YYYY-MM-DD
+  endDateInclusive: string // YYYY-MM-DD
+  // UTC instants
+  startUtc: string
+  endUtcExclusive: string
 }
 
-export interface WorkingScheduleDayRuleDto {
-  // 0=Sun ... 6=Sat
+export interface WorkingHoursDayRuleDto {
+  // 1=Mon ... 7=Sun
   dayOfWeek: number
-  // Local time in workingSchedule.timeZone
+  // Local time in calendar.timeZone
   start: string // HH:mm
   end: string // HH:mm
 }
 
-export interface WorkingScheduleDto {
-  timeZone: string
-  weekly: WorkingScheduleDayRuleDto[]
+export interface WorkingHoursDto {
+  weekly: WorkingHoursDayRuleDto[]
 }
 
 export interface RateLimitScopeStateDto {
   remaining: number
-  reset: string
+  resetUtc: string
   limit: number
   windowMs: number
 }
 
 export interface RateLimitStateDto {
-  nextAllowedAt: string
+  nextAllowedAtUtc: string
   scopes: Record<string, RateLimitScopeStateDto>
 }
 
 export interface FreeBusyResponseDto {
   version: string
-  generatedAt: string
+  generatedAtUtc: string
+  calendar: CalendarContextDto
   window: WindowDto
-  timezone: string
-  workingSchedule?: WorkingScheduleDto
+  workingHours: WorkingHoursDto
   busy: BusyIntervalDto[]
   rateLimit?: RateLimitStateDto
 }
@@ -71,35 +81,120 @@ export type AvailabilityResult =
   | { kind: 'rate_limited'; message: string; rateLimit: RateLimitStateDto }
   | { kind: 'unavailable'; message: string }
 
-function isAllDayInTimeZone(start: Date, end: Date, timeZone: string): boolean {
-  const startParts = getTimeZoneParts(start, timeZone)
-  const endMinusOne = new Date(end.getTime() - 1)
-  const endParts = getTimeZoneParts(endMinusOne, timeZone)
-
-  const startIsMidnight = startParts.hour === 0 && startParts.minute === 0 && startParts.second === 0
-  const endIsEndOfDay = endParts.hour === 23 && endParts.minute === 59
-
-  return startIsMidnight && endIsEndOfDay
+export type ParsedBusyInterval = {
+  startUtcMs: number
+  endUtcMs: number
+  kind: BusyKindDto
+  _rawStartUtc?: string
+  _rawEndUtc?: string
 }
 
-export function mapFreeBusyResponseToBusyBlocks(
-  data: Pick<FreeBusyResponseDto, 'busy' | 'timezone'>
-): BusyBlock[] {
-  const events: BusyBlock[] = data.busy.map(item => ({
-    start: new Date(item.start),
-    end: new Date(item.end),
-    isAllDay: false,
-    _rawStart: item.start,
-    _rawEnd: item.end
-  }))
+export type OwnerDay = {
+  ownerDate: string // YYYY-MM-DD
+  dayOfWeek: number // 1=Mon ... 7=Sun
+  startUtcMs: number
+  endUtcMs: number
+}
 
-  for (const event of events) {
-    if (isAllDayInTimeZone(event.start, event.end, data.timezone)) {
-      event.isAllDay = true
-    }
+function parseIsoUtcToMs(value: string): number | null {
+  const ms = Date.parse(value)
+  if (!Number.isFinite(ms)) return null
+  return ms
+}
+
+function parseYmd(date: string): { year: number; month: number; day: number } | null {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(date)
+  if (!m) return null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null
+  return { year, month, day }
+}
+
+function addDaysToYmd(date: string, days: number): string {
+  const p = parseYmd(date)
+  if (!p) return date
+  const utc = new Date(Date.UTC(p.year, p.month - 1, p.day + days, 12, 0, 0, 0))
+  const y = utc.getUTCFullYear()
+  const m = String(utc.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(utc.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+export function buildOwnerDays(args: {
+  ownerTimeZone: string
+  startDate: string
+  endDateInclusive: string
+}): OwnerDay[] {
+  const { ownerTimeZone, startDate, endDateInclusive } = args
+
+  const days: OwnerDay[] = []
+  let cursor = startDate
+
+  // Safety valve: prevent accidental infinite loops.
+  for (let i = 0; i < 400; i++) {
+    const ymd = parseYmd(cursor)
+    if (!ymd) break
+
+    const start = makeDateInTimeZone({ year: ymd.year, month: ymd.month, day: ymd.day, hour: 0, minute: 0, second: 0 }, ownerTimeZone)
+    const nextDate = addDaysToYmd(cursor, 1)
+    const nextYmd = parseYmd(nextDate)
+    if (!nextYmd) break
+    const end = makeDateInTimeZone({ year: nextYmd.year, month: nextYmd.month, day: nextYmd.day, hour: 0, minute: 0, second: 0 }, ownerTimeZone)
+
+    days.push({
+      ownerDate: cursor,
+      dayOfWeek: getTimeZoneIsoWeekday(start, ownerTimeZone),
+      startUtcMs: start.getTime(),
+      endUtcMs: end.getTime()
+    })
+
+    if (cursor === endDateInclusive) break
+    cursor = nextDate
   }
 
-  return mergeBusyBlocks(events)
+  return days
+}
+
+export function chunkOwnerDaysByWeekStart(args: {
+  ownerDays: OwnerDay[]
+  weekStartDay: number
+}): OwnerDay[][] {
+  const { ownerDays, weekStartDay } = args
+  const weeks: OwnerDay[][] = []
+  let current: OwnerDay[] = []
+
+  for (const day of ownerDays) {
+    if (current.length > 0 && day.dayOfWeek === weekStartDay) {
+      weeks.push(current)
+      current = []
+    }
+    current.push(day)
+  }
+  if (current.length > 0) weeks.push(current)
+  return weeks
+}
+
+export function parseBusyIntervals(busy: BusyIntervalDto[]): ParsedBusyInterval[] {
+  const parsed: ParsedBusyInterval[] = []
+
+  for (const b of busy) {
+    const startUtcMs = parseIsoUtcToMs(b.startUtc)
+    const endUtcMs = parseIsoUtcToMs(b.endUtc)
+    if (startUtcMs === null || endUtcMs === null) continue
+    if (endUtcMs <= startUtcMs) continue
+
+    parsed.push({
+      startUtcMs,
+      endUtcMs,
+      kind: b.kind,
+      _rawStartUtc: b.startUtc,
+      _rawEndUtc: b.endUtc
+    })
+  }
+
+  return parsed
 }
 
 export function interpretFreeBusyHttpResult(args: {
@@ -126,12 +221,7 @@ export function interpretFreeBusyHttpResult(args: {
       ? (body as { rateLimit?: unknown }).rateLimit
       : undefined
 
-    if (
-      typeof rateLimit === 'object' &&
-      rateLimit !== null &&
-      'nextAllowedAt' in rateLimit &&
-      'scopes' in rateLimit
-    ) {
+    if (typeof rateLimit === 'object' && rateLimit !== null && 'nextAllowedAtUtc' in rateLimit && 'scopes' in rateLimit) {
       return {
         kind: 'rate_limited',
         message: FREEBUSY_RATE_LIMITED_MESSAGE,
@@ -149,12 +239,3 @@ export function interpretFreeBusyHttpResult(args: {
   return { kind: 'ok' }
 }
 
-export function getWindowWeeks(window: WindowDto): number {
-  const start = new Date(window.start)
-  const end = new Date(window.end)
-  const msPerDay = 24 * 60 * 60 * 1000
-
-  // Inclusive end (API specifies end is last millisecond of last day)
-  const days = Math.max(1, Math.ceil((end.getTime() - start.getTime() + 1) / msPerDay))
-  return Math.max(1, Math.ceil(days / 7))
-}

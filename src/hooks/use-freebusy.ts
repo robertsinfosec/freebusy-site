@@ -1,39 +1,45 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import type { BusyBlock } from '@/lib/ical-parser'
 import {
   type FreeBusyResponseDto,
   FREEBUSY_UNAVAILABLE_MESSAGE,
   interpretFreeBusyHttpResult,
-  getWindowWeeks,
-  mapFreeBusyResponseToBusyBlocks
+  buildOwnerDays,
+  chunkOwnerDaysByWeekStart,
+  parseBusyIntervals,
+  type OwnerDay,
+  type ParsedBusyInterval
 } from '@/hooks/freebusy-utils'
 
 type AvailabilityState = {
-  busyBlocks: BusyBlock[]
+  busy: ParsedBusyInterval[]
   apiVersion: string | null
   loading: boolean
   disabledMessage: string | null
   unavailableMessage: string | null
-  windowWeeks: number | null
-  window: { start: string; end: string } | null
-  timezone: string | null
-  workingSchedule: FreeBusyResponseDto['workingSchedule'] | null
-  rateLimitNextAllowedAt: string | null
+  ownerTimeZone: string | null
+  weekStartDay: number | null
+  window: FreeBusyResponseDto['window'] | null
+  ownerDays: OwnerDay[]
+  ownerWeeks: OwnerDay[][]
+  workingHours: FreeBusyResponseDto['workingHours'] | null
+  rateLimitNextAllowedAtUtc: string | null
 }
 
 export function useFreeBusy() {
   const [state, setState] = useState<AvailabilityState>({
-    busyBlocks: [],
+    busy: [],
     apiVersion: null,
     loading: true,
     disabledMessage: null,
     unavailableMessage: null,
-    windowWeeks: null,
     window: null,
-    timezone: null,
-    workingSchedule: null,
-    rateLimitNextAllowedAt: null
+    ownerTimeZone: null,
+    weekStartDay: null,
+    ownerDays: [],
+    ownerWeeks: [],
+    workingHours: null,
+    rateLimitNextAllowedAtUtc: null
   })
 
   const fetchCalendar = useCallback(async () => {
@@ -57,10 +63,14 @@ export function useFreeBusy() {
           apiVersion: null,
           disabledMessage: interpreted.message,
           unavailableMessage: null,
-          busyBlocks: [],
-          timezone: null,
-          workingSchedule: null,
-          rateLimitNextAllowedAt: null
+          busy: [],
+          ownerTimeZone: null,
+          weekStartDay: null,
+          window: null,
+          ownerDays: [],
+          ownerWeeks: [],
+          workingHours: null,
+          rateLimitNextAllowedAtUtc: null
         }))
         return
       }
@@ -72,10 +82,14 @@ export function useFreeBusy() {
           apiVersion: null,
           disabledMessage: null,
           unavailableMessage: interpreted.message,
-          busyBlocks: [],
-          timezone: null,
-          workingSchedule: null,
-          rateLimitNextAllowedAt: interpreted.rateLimit.nextAllowedAt
+          busy: [],
+          ownerTimeZone: null,
+          weekStartDay: null,
+          window: null,
+          ownerDays: [],
+          ownerWeeks: [],
+          workingHours: null,
+          rateLimitNextAllowedAtUtc: interpreted.rateLimit.nextAllowedAtUtc
         }))
         return
       }
@@ -87,29 +101,42 @@ export function useFreeBusy() {
           apiVersion: null,
           disabledMessage: null,
           unavailableMessage: interpreted.message,
-          busyBlocks: [],
-          timezone: null,
-          workingSchedule: null,
-          rateLimitNextAllowedAt: null
+          busy: [],
+          ownerTimeZone: null,
+          weekStartDay: null,
+          window: null,
+          ownerDays: [],
+          ownerWeeks: [],
+          workingHours: null,
+          rateLimitNextAllowedAtUtc: null
         }))
         return
       }
 
       const data = body as FreeBusyResponseDto
-      const merged = mapFreeBusyResponseToBusyBlocks(data)
-      const windowWeeks = data.window ? getWindowWeeks(data.window) : null
+      const ownerTimeZone = data.calendar?.timeZone ?? null
+      const weekStartDay = data.calendar?.weekStartDay ?? null
+      const ownerDays = ownerTimeZone
+        ? buildOwnerDays({ ownerTimeZone, startDate: data.window.startDate, endDateInclusive: data.window.endDateInclusive })
+        : []
+      const ownerWeeks = weekStartDay
+        ? chunkOwnerDaysByWeekStart({ ownerDays, weekStartDay })
+        : [ownerDays]
+      const busy = parseBusyIntervals(data.busy ?? [])
 
       setState({
-        busyBlocks: merged,
+        busy,
         apiVersion: data.version ?? null,
         loading: false,
         disabledMessage: null,
         unavailableMessage: null,
-        windowWeeks,
         window: data.window ?? null,
-        timezone: data.timezone ?? null,
-        workingSchedule: data.workingSchedule ?? null,
-        rateLimitNextAllowedAt: data.rateLimit?.nextAllowedAt ?? null
+        ownerTimeZone,
+        weekStartDay,
+        ownerDays,
+        ownerWeeks,
+        workingHours: data.workingHours ?? null,
+        rateLimitNextAllowedAtUtc: data.rateLimit?.nextAllowedAtUtc ?? null
       })
     } catch {
       setState(prev => ({
@@ -118,10 +145,14 @@ export function useFreeBusy() {
         apiVersion: null,
         disabledMessage: null,
         unavailableMessage: FREEBUSY_UNAVAILABLE_MESSAGE,
-        busyBlocks: [],
-        timezone: null,
-        workingSchedule: null,
-        rateLimitNextAllowedAt: null
+        busy: [],
+        ownerTimeZone: null,
+        weekStartDay: null,
+        window: null,
+        ownerDays: [],
+        ownerWeeks: [],
+        workingHours: null,
+        rateLimitNextAllowedAtUtc: null
       }))
     }
   }, [])
@@ -136,6 +167,6 @@ export function useFreeBusy() {
   return {
     ...state,
     refresh: fetchCalendar,
-    refreshDisabledUntil: state.rateLimitNextAllowedAt
+    refreshDisabledUntil: state.rateLimitNextAllowedAtUtc
   }
 }

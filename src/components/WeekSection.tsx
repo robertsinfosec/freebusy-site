@@ -1,45 +1,43 @@
 import { CalendarGrid } from './CalendarGrid'
-import type { BusyBlock } from '@/lib/ical-parser'
-import { addDaysInTimeZone, formatDateInTimeZone, getTimeZoneDisplayName } from '@/lib/date-utils'
+import type { OwnerDay, ParsedBusyInterval, WorkingHoursDayRuleDto } from '@/hooks/freebusy-utils'
+import { formatDateInTimeZone, getTimeZoneDisplayName } from '@/lib/date-utils'
 import { Badge } from '@/components/ui/badge'
-import type { WorkingScheduleDto } from '@/hooks/freebusy-utils'
 
 interface WeekSectionProps {
-  startDate: Date
-  busyBlocks: BusyBlock[]
+  ownerDays: OwnerDay[]
+  busy: ParsedBusyInterval[]
   opacity?: number
   showTimeLabels?: boolean
   className?: string
-  windowStart?: Date | null
-  windowEnd?: Date | null
-  timeZone?: string
-  calendarTimeZone?: string | null
-  workingSchedule?: WorkingScheduleDto | null
+  viewTimeZone: string
+  ownerTimeZone: string
+  weekStartDay?: number | null
+  workingHoursWeekly?: WorkingHoursDayRuleDto[] | null
 }
 
 export function WeekSection({ 
-  startDate, 
-  busyBlocks, 
+  ownerDays,
+  busy,
   opacity = 1,
   showTimeLabels = true,
   className = '',
-  windowStart = null,
-  windowEnd = null,
-  timeZone = 'Etc/UTC',
-  calendarTimeZone = null,
-  workingSchedule = null
+  viewTimeZone,
+  ownerTimeZone,
+  weekStartDay = null,
+  workingHoursWeekly = null
 }: WeekSectionProps) {
-  const weekEnd = addDaysInTimeZone(startDate, 6, timeZone)
-  const tzAbbrev = getTimeZoneDisplayName(startDate, timeZone, 'short')
-  const tzLong = getTimeZoneDisplayName(startDate, timeZone, 'long')
+  const weekStartInstant = ownerDays.length > 0 ? new Date(ownerDays[0].startUtcMs) : new Date()
+  const weekEndInstant = ownerDays.length > 0 ? new Date(ownerDays[ownerDays.length - 1].startUtcMs) : new Date()
+  const tzAbbrev = getTimeZoneDisplayName(weekStartInstant, viewTimeZone, 'short')
+  const tzLong = getTimeZoneDisplayName(weekStartInstant, viewTimeZone, 'long')
   
   return (
     <div className={className}>
       <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground font-medium">
         <span>
-          {formatDateInTimeZone(startDate, timeZone)}
+          {formatDateInTimeZone(weekStartInstant, ownerTimeZone)}
           {' - '}
-          {formatDateInTimeZone(weekEnd, timeZone)}
+          {formatDateInTimeZone(weekEndInstant, ownerTimeZone)}
         </span>
         <Badge variant="secondary" title={tzLong}>
           {tzAbbrev}
@@ -48,16 +46,14 @@ export function WeekSection({
       <div className="overflow-x-auto pb-1">
         <div className="min-w-[640px] sm:min-w-0">
           <CalendarGrid
-            startDate={startDate}
-            days={7}
-            busyBlocks={busyBlocks}
+            ownerDays={ownerDays}
+            busy={busy}
             opacity={opacity}
             showTimeLabels={showTimeLabels}
-            windowStart={windowStart}
-            windowEnd={windowEnd}
-            timeZone={timeZone}
-            calendarTimeZone={calendarTimeZone}
-            workingSchedule={workingSchedule}
+            viewTimeZone={viewTimeZone}
+            ownerTimeZone={ownerTimeZone}
+            weekStartDay={weekStartDay}
+            workingHoursWeekly={workingHoursWeekly}
           />
         </div>
       </div>

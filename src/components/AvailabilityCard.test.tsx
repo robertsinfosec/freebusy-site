@@ -11,9 +11,9 @@ vi.mock('framer-motion', () => ({
 
 const weekSectionSpy = vi.fn()
 vi.mock('@/components/WeekSection', () => ({
-  WeekSection: (props: { startDate: Date }) => {
+  WeekSection: (props: { ownerDays: Array<{ ownerDate: string }> }) => {
     weekSectionSpy(props)
-    return <div data-testid="week-section">{props.startDate.toISOString()}</div>
+    return <div data-testid="week-section">{props.ownerDays[0]?.ownerDate ?? 'empty'}</div>
   }
 }))
 
@@ -22,10 +22,12 @@ describe('AvailabilityCard', () => {
     render(
       <AvailabilityCard
         today={new Date('2025-12-27T00:00:00Z')}
-        busyBlocks={[]}
+        busy={[]}
         disabledMessage="Free/busy time is not being shared right now."
         unavailableMessage={null}
-        weekStarts={[new Date('2025-12-21T00:00:00Z'), new Date('2025-12-28T00:00:00Z')]}
+        ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
+        viewTimeZone="Etc/UTC"
+        ownerTimeZone="Etc/UTC"
       />
     )
 
@@ -36,10 +38,12 @@ describe('AvailabilityCard', () => {
     render(
       <AvailabilityCard
         today={new Date('2025-12-27T00:00:00Z')}
-        busyBlocks={[]}
+        busy={[]}
         disabledMessage={null}
         unavailableMessage="There was a problem getting availability. Please try again later."
-        weekStarts={[new Date('2025-12-21T00:00:00Z'), new Date('2025-12-28T00:00:00Z')]}
+        ownerWeeks={[[{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }]]}
+        viewTimeZone="Etc/UTC"
+        ownerTimeZone="Etc/UTC"
       />
     )
 
@@ -49,20 +53,22 @@ describe('AvailabilityCard', () => {
   it('renders the expected number of weeks when available', () => {
     weekSectionSpy.mockClear()
 
-    const weekStarts = [
-      new Date('2025-12-21T00:00:00Z'),
-      new Date('2025-12-28T00:00:00Z'),
-      new Date('2026-01-04T00:00:00Z'),
-      new Date('2026-01-11T00:00:00Z')
+    const ownerWeeks = [
+      [{ ownerDate: '2025-12-21', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }],
+      [{ ownerDate: '2025-12-28', dayOfWeek: 7, startUtcMs: 1, endUtcMs: 2 }],
+      [{ ownerDate: '2026-01-04', dayOfWeek: 7, startUtcMs: 2, endUtcMs: 3 }],
+      [{ ownerDate: '2026-01-11', dayOfWeek: 7, startUtcMs: 3, endUtcMs: 4 }]
     ]
 
     render(
       <AvailabilityCard
         today={new Date('2025-12-27T00:00:00Z')}
-        busyBlocks={[]}
+        busy={[]}
         disabledMessage={null}
         unavailableMessage={null}
-        weekStarts={weekStarts}
+        ownerWeeks={ownerWeeks}
+        viewTimeZone="Etc/UTC"
+        ownerTimeZone="Etc/UTC"
       />
     )
 

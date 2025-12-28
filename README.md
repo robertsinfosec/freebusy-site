@@ -6,11 +6,20 @@ A professional free/busy calendar viewer that displays real-time availability fr
 
 ## Features
 
-- **Real-time Calendar Integration**: Fetches and displays busy/free time from an iCal feed
-- **Smart Date Ranges**: Shows 2 weeks ahead with context from the previous week and option to expand to 3 weeks
-- **Working Hours Visualization**: Clearly distinguishes working hours (Mon-Fri, 8am-6pm ET) from non-working time
+- **Real-time Calendar Integration**: Fetches and displays normalized free/busy from the Freebusy API
+- **Owner-day Anchoring (v2)**: Day columns are anchored to the calendar owner's timezone (IANA)
+- **Viewer Timezone Switching**: Dropdown changes time labels + block placement without changing which owner-days are shown
+- **Working Hours Visualization (v2)**: Working hours come from the API and are defined in owner-local time
 - **Auto-refresh**: Calendar updates every 5 minutes to show current availability
 - **Professional Design**: Cybersecurity-themed interface with IBM Plex Mono typography
+
+## Time Semantics (API v2)
+
+- **Owner timezone (calendar anchoring)**: Day columns are generated from `window.startDate` through `window.endDateInclusive` and are anchored to `calendar.timeZone`.
+- **Viewer timezone (display only)**: The viewer timezone affects hour labels and vertical placement of blocks, but does not change which day columns exist.
+- **Busy intervals**: `busy[]` uses canonical UTC instants (`startUtc` inclusive, `endUtc` exclusive). Rendering clips intervals to each owner-day column.
+- **All-day intervals**: `kind: allDay` renders as fully busy for that owner-day column.
+- **DST correctness**: Conversions rely on IANA timezone rules (no fixed offsets).
 
 ## Local Development
 

@@ -24,20 +24,26 @@ describe('useFreeBusy', () => {
     vi.resetAllMocks()
   })
 
-  it('fetches on mount and populates busyBlocks on success', async () => {
+  it('fetches on mount and populates v2 state on success', async () => {
     mockFetchOnce({
       status: 200,
       ok: true,
       body: {
         version: '25.1227.1200',
-        generatedAt: '2025-12-27T12:00:00.000Z',
-        window: { start: '2025-12-27T00:00:00.000Z', end: '2026-01-09T23:59:59.999Z' },
-        timezone: 'Etc/UTC',
-        busy: [{ start: '2025-12-27T10:00:00.000Z', end: '2025-12-27T11:00:00.000Z' }],
+        generatedAtUtc: '2025-12-27T12:00:00.000Z',
+        calendar: { timeZone: 'Etc/UTC', weekStartDay: 1 },
+        window: {
+          startDate: '2025-12-27',
+          endDateInclusive: '2026-01-09',
+          startUtc: '2025-12-27T00:00:00.000Z',
+          endUtcExclusive: '2026-01-10T00:00:00.000Z'
+        },
+        workingHours: { weekly: [] },
+        busy: [{ startUtc: '2025-12-27T10:00:00.000Z', endUtc: '2025-12-27T11:00:00.000Z', kind: 'time' }],
         rateLimit: {
-          nextAllowedAt: '2025-12-27T12:05:00.000Z',
+          nextAllowedAtUtc: '2025-12-27T12:05:00.000Z',
           scopes: {
-            perIp: { remaining: 59, reset: '2025-12-27T12:05:00.000Z', limit: 60, windowMs: 300000 }
+            perIp: { remaining: 59, resetUtc: '2025-12-27T12:05:00.000Z', limit: 60, windowMs: 300000 }
           }
         }
       }
@@ -51,10 +57,11 @@ describe('useFreeBusy', () => {
 
     expect(result.current.unavailableMessage).toBeNull()
     expect(result.current.disabledMessage).toBeNull()
-    expect(result.current.busyBlocks).toHaveLength(1)
-    expect(result.current.windowWeeks).toBe(2)
-    expect(result.current.timezone).toBe('Etc/UTC')
-    expect(result.current.rateLimitNextAllowedAt).toBe('2025-12-27T12:05:00.000Z')
+    expect(result.current.busy).toHaveLength(1)
+    expect(result.current.ownerTimeZone).toBe('Etc/UTC')
+    expect(result.current.ownerDays.length).toBeGreaterThan(0)
+    expect(result.current.ownerWeeks.length).toBeGreaterThan(0)
+    expect(result.current.rateLimitNextAllowedAtUtc).toBe('2025-12-27T12:05:00.000Z')
     expect(globalThis.fetch).toHaveBeenCalledTimes(1)
 
     unmount()
@@ -75,7 +82,7 @@ describe('useFreeBusy', () => {
 
     expect(result.current.disabledMessage).toMatch(/not being shared/i)
     expect(result.current.unavailableMessage).toBeNull()
-    expect(result.current.busyBlocks).toHaveLength(0)
+    expect(result.current.busy).toHaveLength(0)
 
     unmount()
   })
@@ -88,9 +95,15 @@ describe('useFreeBusy', () => {
       ok: true,
       body: {
         version: '25.1227.1200',
-        generatedAt: '2025-12-27T12:00:00.000Z',
-        window: { start: '2025-12-27T00:00:00.000Z', end: '2026-01-09T23:59:59.999Z' },
-        timezone: 'Etc/UTC',
+        generatedAtUtc: '2025-12-27T12:00:00.000Z',
+        calendar: { timeZone: 'Etc/UTC', weekStartDay: 1 },
+        window: {
+          startDate: '2025-12-27',
+          endDateInclusive: '2026-01-09',
+          startUtc: '2025-12-27T00:00:00.000Z',
+          endUtcExclusive: '2026-01-10T00:00:00.000Z'
+        },
+        workingHours: { weekly: [] },
         busy: []
       }
     })
@@ -99,10 +112,16 @@ describe('useFreeBusy', () => {
       ok: true,
       body: {
         version: '25.1227.1200',
-        generatedAt: '2025-12-27T12:05:00.000Z',
-        window: { start: '2025-12-27T00:00:00.000Z', end: '2026-01-09T23:59:59.999Z' },
-        timezone: 'Etc/UTC',
-        busy: [{ start: '2025-12-27T12:00:00.000Z', end: '2025-12-27T12:30:00.000Z' }]
+        generatedAtUtc: '2025-12-27T12:05:00.000Z',
+        calendar: { timeZone: 'Etc/UTC', weekStartDay: 1 },
+        window: {
+          startDate: '2025-12-27',
+          endDateInclusive: '2026-01-09',
+          startUtc: '2025-12-27T00:00:00.000Z',
+          endUtcExclusive: '2026-01-10T00:00:00.000Z'
+        },
+        workingHours: { weekly: [] },
+        busy: [{ startUtc: '2025-12-27T12:00:00.000Z', endUtc: '2025-12-27T12:30:00.000Z', kind: 'time' }]
       }
     })
 
@@ -125,7 +144,7 @@ describe('useFreeBusy', () => {
     })
 
     expect(globalThis.fetch).toHaveBeenCalledTimes(2)
-    expect(result.current.busyBlocks).toHaveLength(1)
+    expect(result.current.busy).toHaveLength(1)
 
     unmount()
   })

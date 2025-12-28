@@ -81,6 +81,12 @@ export function getTimeZoneWeekday(date: Date, timeZone: string): number {
   return map[weekday] ?? 0
 }
 
+export function getTimeZoneIsoWeekday(date: Date, timeZone: string): number {
+  // ISO: 1=Mon ... 7=Sun
+  const weekday0 = getTimeZoneWeekday(date, timeZone)
+  return weekday0 === 0 ? 7 : weekday0
+}
+
 export function makeDateInTimeZone(parts: {
   year: number
   month: number

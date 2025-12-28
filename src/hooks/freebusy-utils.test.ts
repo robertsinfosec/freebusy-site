@@ -5,22 +5,22 @@ import {
   FREEBUSY_RATE_LIMITED_MESSAGE,
   FREEBUSY_UNAVAILABLE_MESSAGE,
   interpretFreeBusyHttpResult,
-  getWindowWeeks,
-  mapFreeBusyResponseToBusyBlocks
+  buildOwnerDays,
+  chunkOwnerDaysByWeekStart,
+  parseBusyIntervals
 } from '@/hooks/freebusy-utils'
 
 describe('freebusy-utils', () => {
-  it('maps busy ranges into BusyBlocks and merges overlaps', () => {
-    const blocks = mapFreeBusyResponseToBusyBlocks({
-      busy: [
-        { start: '2025-12-27T10:00:00.000Z', end: '2025-12-27T11:00:00.000Z' },
-        { start: '2025-12-27T10:30:00.000Z', end: '2025-12-27T12:00:00.000Z' }
-      ]
-    })
+  it('parses busy intervals as canonical UTC instants', () => {
+    const parsed = parseBusyIntervals([
+      { startUtc: '2025-12-27T10:00:00.000Z', endUtc: '2025-12-27T11:00:00.000Z', kind: 'time' },
+      { startUtc: 'bad', endUtc: '2025-12-27T12:00:00.000Z', kind: 'time' }
+    ])
 
-    expect(blocks).toHaveLength(1)
-    expect(blocks[0].start.toISOString()).toBe('2025-12-27T10:00:00.000Z')
-    expect(blocks[0].end.toISOString()).toBe('2025-12-27T12:00:00.000Z')
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0].startUtcMs).toBe(Date.parse('2025-12-27T10:00:00.000Z'))
+    expect(parsed[0].endUtcMs).toBe(Date.parse('2025-12-27T11:00:00.000Z'))
+    expect(parsed[0].kind).toBe('time')
   })
 
   it('interprets 503 disabled', () => {
@@ -68,9 +68,9 @@ describe('freebusy-utils', () => {
       body: {
         error: 'rate_limited',
         rateLimit: {
-          nextAllowedAt: '2025-12-27T12:05:00.000Z',
+          nextAllowedAtUtc: '2025-12-27T12:05:00.000Z',
           scopes: {
-            perIp: { remaining: 0, reset: '2025-12-27T12:05:00.000Z', limit: 60, windowMs: 300000 }
+            perIp: { remaining: 0, resetUtc: '2025-12-27T12:05:00.000Z', limit: 60, windowMs: 300000 }
           }
         }
       }
@@ -80,15 +80,40 @@ describe('freebusy-utils', () => {
       kind: 'rate_limited',
       message: FREEBUSY_RATE_LIMITED_MESSAGE,
       rateLimit: {
-        nextAllowedAt: '2025-12-27T12:05:00.000Z',
+        nextAllowedAtUtc: '2025-12-27T12:05:00.000Z',
         scopes: {
-          perIp: { remaining: 0, reset: '2025-12-27T12:05:00.000Z', limit: 60, windowMs: 300000 }
+          perIp: { remaining: 0, resetUtc: '2025-12-27T12:05:00.000Z', limit: 60, windowMs: 300000 }
         }
       }
     })
   })
 
-  it('computes window weeks from start/end', () => {
-    expect(getWindowWeeks({ start: '2025-12-27T00:00:00.000Z', end: '2026-01-09T23:59:59.999Z' })).toBe(2)
+  it('buildOwnerDays uses owner timezone boundaries across DST (America/New_York, March 2026)', () => {
+    const days = buildOwnerDays({
+      ownerTimeZone: 'America/New_York',
+      startDate: '2026-03-07',
+      endDateInclusive: '2026-03-09'
+    })
+
+    const dstDay = days.find(d => d.ownerDate === '2026-03-08')
+    expect(dstDay).toBeTruthy()
+    expect(dstDay!.dayOfWeek).toBe(7) // Sunday
+
+    // Midnight-to-midnight owner day on DST start day is 23 hours.
+    expect(dstDay!.startUtcMs).toBe(Date.parse('2026-03-08T05:00:00.000Z'))
+    expect(dstDay!.endUtcMs).toBe(Date.parse('2026-03-09T04:00:00.000Z'))
+  })
+
+  it('chunks owner days on weekStartDay without inventing extra days', () => {
+    const ownerDays = [
+      { ownerDate: '2026-01-04', dayOfWeek: 7, startUtcMs: 0, endUtcMs: 1 }, // Sun
+      { ownerDate: '2026-01-05', dayOfWeek: 1, startUtcMs: 1, endUtcMs: 2 }, // Mon
+      { ownerDate: '2026-01-06', dayOfWeek: 2, startUtcMs: 2, endUtcMs: 3 }
+    ]
+
+    const weeks = chunkOwnerDaysByWeekStart({ ownerDays, weekStartDay: 1 })
+    expect(weeks).toHaveLength(2)
+    expect(weeks[0].map(d => d.ownerDate)).toEqual(['2026-01-04'])
+    expect(weeks[1].map(d => d.ownerDate)).toEqual(['2026-01-05', '2026-01-06'])
   })
 })

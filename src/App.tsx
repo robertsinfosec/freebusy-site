@@ -4,16 +4,21 @@ import { AppHeader } from '@/components/AppHeader'
 import { AvailabilityCard } from '@/components/AvailabilityCard'
 import { AvailabilityLoadingCard } from '@/components/AvailabilityLoadingCard'
 import { useFreeBusy } from '@/hooks/use-freebusy'
-import { addDaysInTimeZone, getStartOfDayInTimeZone, getStartOfWeekInTimeZone } from '@/lib/date-utils'
+import { getStartOfDayInTimeZone } from '@/lib/date-utils'
 import { isSupportedUsTimeZone } from '@/lib/us-timezones'
 import { BUILD_VERSION } from '@/version.generated'
 
 const VIEW_TIMEZONE_STORAGE_KEY = 'freebusy.viewTimeZone'
 
 function App() {
-  const { busyBlocks, loading, disabledMessage, unavailableMessage, refresh, window, windowWeeks, refreshDisabledUntil, timezone, apiVersion, workingSchedule } = useFreeBusy()
+  const { busy, loading, disabledMessage, unavailableMessage, refresh, refreshDisabledUntil, ownerTimeZone, apiVersion, ownerWeeks, weekStartDay, workingHours } = useFreeBusy()
 
-  const calendarTimeZone = timezone && isSupportedUsTimeZone(timezone) ? timezone : null
+  // Owner timezone is authoritative for the day columns.
+  const ownerCalendarTimeZone = ownerTimeZone ?? null
+  // Viewer timezone dropdown is US-only; default to owner TZ if it is in the list.
+  const calendarTimeZone = ownerCalendarTimeZone && isSupportedUsTimeZone(ownerCalendarTimeZone)
+    ? ownerCalendarTimeZone
+    : null
 
   // Display timezone is user-controlled; default to the API timezone.
   const [viewTimeZone, setViewTimeZone] = useState<string | null>(() => {
@@ -45,30 +50,13 @@ function App() {
     }
   }, [calendarTimeZone])
 
-  const effectiveViewTimeZone = viewTimeZone ?? calendarTimeZone
-  const renderTimeZone = effectiveViewTimeZone ?? 'Etc/UTC'
+  const effectiveViewTimeZone = viewTimeZone ?? calendarTimeZone ?? 'America/New_York'
+  const renderTimeZone = effectiveViewTimeZone
 
-  const today = useMemo(() => getStartOfDayInTimeZone(new Date(), renderTimeZone), [renderTimeZone])
-
-  const windowStart = useMemo(() => (window?.start ? new Date(window.start) : null), [window?.start])
-  const windowEnd = useMemo(() => (window?.end ? new Date(window.end) : null), [window?.end])
-
-  const firstWeekStart = useMemo(() => {
-    const anchor = windowStart ?? today
-    return getStartOfWeekInTimeZone(anchor, renderTimeZone)
-  }, [renderTimeZone, today, windowStart])
-
-  const weekStarts = useMemo(() => {
-    if (windowStart && windowEnd) {
-      const start = getStartOfWeekInTimeZone(windowStart, renderTimeZone)
-      const end = getStartOfWeekInTimeZone(windowEnd, renderTimeZone)
-      const totalWeeks = Math.max(1, Math.floor((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
-      return Array.from({ length: totalWeeks }, (_, i) => addDaysInTimeZone(start, i * 7, renderTimeZone))
-    }
-
-    const fallbackWeeks = Math.max(1, windowWeeks ?? 2)
-    return Array.from({ length: fallbackWeeks }, (_, i) => addDaysInTimeZone(firstWeekStart, i * 7, renderTimeZone))
-  }, [firstWeekStart, renderTimeZone, windowEnd, windowStart, windowWeeks])
+  const today = useMemo(
+    () => getStartOfDayInTimeZone(new Date(), ownerCalendarTimeZone ?? renderTimeZone),
+    [ownerCalendarTimeZone, renderTimeZone]
+  )
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
@@ -95,15 +83,14 @@ function App() {
         ) : (
           <AvailabilityCard
             today={today}
-            busyBlocks={busyBlocks}
+            busy={busy}
             disabledMessage={disabledMessage}
             unavailableMessage={unavailableMessage}
-            weekStarts={weekStarts}
-            windowStart={windowStart}
-            windowEnd={windowEnd}
-            timeZone={renderTimeZone}
-            calendarTimeZone={calendarTimeZone}
-            workingSchedule={workingSchedule}
+            ownerWeeks={ownerWeeks}
+            viewTimeZone={renderTimeZone}
+            ownerTimeZone={ownerCalendarTimeZone ?? 'Etc/UTC'}
+            weekStartDay={weekStartDay}
+            workingHoursWeekly={workingHours?.weekly ?? null}
           />
         )}
 

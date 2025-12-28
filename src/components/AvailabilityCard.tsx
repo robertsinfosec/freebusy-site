@@ -5,48 +5,45 @@ import { CalendarX, Warning } from '@phosphor-icons/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { WeekSection } from '@/components/WeekSection'
 
-import type { BusyBlock } from '@/lib/ical-parser'
-import type { WorkingScheduleDto } from '@/hooks/freebusy-utils'
+import type { OwnerDay, ParsedBusyInterval, WorkingHoursDayRuleDto } from '@/hooks/freebusy-utils'
 
 interface AvailabilityCardProps {
   today: Date
-  busyBlocks: BusyBlock[]
+  busy: ParsedBusyInterval[]
   disabledMessage: string | null
   unavailableMessage: string | null
-  weekStarts: Date[]
-  windowStart?: Date | null
-  windowEnd?: Date | null
-  timeZone?: string
-  calendarTimeZone?: string | null
-  workingSchedule?: WorkingScheduleDto | null
+  ownerWeeks: OwnerDay[][]
+  viewTimeZone: string
+  ownerTimeZone: string
+  weekStartDay?: number | null
+  workingHoursWeekly?: WorkingHoursDayRuleDto[] | null
 }
 
 export function AvailabilityCard({
   today,
-  busyBlocks,
+  busy,
   disabledMessage,
   unavailableMessage,
-  weekStarts,
-  windowStart = null,
-  windowEnd = null,
-  timeZone = 'Etc/UTC',
-  calendarTimeZone = null,
-  workingSchedule = null
+  ownerWeeks,
+  viewTimeZone,
+  ownerTimeZone,
+  weekStartDay = null,
+  workingHoursWeekly = null
 }: AvailabilityCardProps) {
   const monthLabel = useMemo(() => (
     today.toLocaleDateString('en-US', {
       month: 'long',
       year: 'numeric',
-      timeZone
+      timeZone: ownerTimeZone
     })
-  ), [timeZone, today])
+  ), [ownerTimeZone, today])
 
   const description = useMemo(() => {
     if (disabledMessage) return 'Free/busy sharing is currently disabled.'
     if (unavailableMessage) return 'We had trouble fetching availability. Please try again later.'
 
-    return busyBlocks.length === 0 ? 'No busy blocks scheduled.' : null
-  }, [busyBlocks.length, disabledMessage, unavailableMessage])
+    return busy.length === 0 ? 'No busy blocks scheduled.' : null
+  }, [busy.length, disabledMessage, unavailableMessage])
 
   return (
     <Card>
@@ -78,23 +75,22 @@ export function AvailabilityCard({
         ) : (
           <>
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-              {weekStarts.map((start, idx) => (
+              {ownerWeeks.map((week, idx) => (
                 <motion.div
-                  key={start.toISOString()}
+                  key={week[0]?.ownerDate ?? idx}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: idx * 0.05 }}
                 >
                   <WeekSection
-                    startDate={start}
-                    busyBlocks={busyBlocks}
+                    ownerDays={week}
+                    busy={busy}
                     opacity={1}
                     showTimeLabels={true}
-                    windowStart={windowStart}
-                    windowEnd={windowEnd}
-                    timeZone={timeZone}
-                    calendarTimeZone={calendarTimeZone}
-                    workingSchedule={workingSchedule}
+                    viewTimeZone={viewTimeZone}
+                    ownerTimeZone={ownerTimeZone}
+                    weekStartDay={weekStartDay}
+                    workingHoursWeekly={workingHoursWeekly}
                   />
                 </motion.div>
               ))}

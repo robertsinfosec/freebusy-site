@@ -1,46 +1,44 @@
 import { useMemo } from 'react'
-import type { BusyBlock } from '@/lib/ical-parser'
-import type { WorkingScheduleDto } from '@/hooks/freebusy-utils'
+import type { OwnerDay, ParsedBusyInterval, WorkingHoursDayRuleDto } from '@/hooks/freebusy-utils'
 import {
-  formatDateHeaderInTimeZone,
   formatTime,
-  addDaysInTimeZone,
-  getStartOfDayInTimeZone,
   getTimeZoneParts,
   formatTimeRangeInTimeZone,
-  getTimeZoneWeekday,
-  makeDateInTimeZone
+  makeDateInTimeZone,
+  formatDateHeaderInTimeZone
 } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
-import { getDayBusyBlockRenderInfos, getHourSlots } from '@/components/calendar-grid-utils'
+import { getOwnerDayBusyIntervalRenderInfos, getHourSlots } from '@/components/calendar-grid-utils'
 // tooltip removed in favor of native title
 
 interface CalendarGridProps {
-  startDate: Date
-  days: number
-  busyBlocks: BusyBlock[]
+  ownerDays: OwnerDay[]
+  busy: ParsedBusyInterval[]
   opacity?: number
   showTimeLabels?: boolean
-  windowStart?: Date | null
-  windowEnd?: Date | null
-  timeZone?: string
-  calendarTimeZone?: string | null
-  workingSchedule?: WorkingScheduleDto | null
+  viewTimeZone: string
+  ownerTimeZone: string
+  weekStartDay?: number | null
+  workingHoursWeekly?: WorkingHoursDayRuleDto[] | null
 }
 
 export function CalendarGrid({ 
-  startDate, 
-  days, 
-  busyBlocks, 
+  ownerDays,
+  busy,
   opacity = 1,
   showTimeLabels = true,
-  windowStart = null,
-  windowEnd = null,
-  timeZone = 'Etc/UTC',
-  calendarTimeZone: _calendarTimeZone = null,
-  workingSchedule = null
+  viewTimeZone,
+  ownerTimeZone,
+  weekStartDay: _weekStartDay = null,
+  workingHoursWeekly = null
 }: CalendarGridProps) {
-  const today = useMemo(() => getStartOfDayInTimeZone(new Date(), timeZone), [timeZone])
+  const todayOwnerDate = useMemo(() => {
+    const p = getTimeZoneParts(new Date(), ownerTimeZone)
+    const mm = String(p.month).padStart(2, '0')
+    const dd = String(p.day).padStart(2, '0')
+    return `${p.year}-${mm}-${dd}`
+  }, [ownerTimeZone])
+
   const now = useMemo(() => new Date(), [])
 
   // Default grid hours in the *viewer* timezone.
@@ -50,12 +48,11 @@ export function CalendarGrid({
   const DEFAULT_VIEW_END = 18
   const CELL_HEIGHT = 48
 
-  const scheduleTimeZone = workingSchedule?.timeZone ?? _calendarTimeZone
-  const scheduleByWeekday = useMemo(() => {
+  const scheduleByIsoWeekday = useMemo(() => {
     const map = new Map<number, { startMin: number; endMin: number }>()
-    if (!workingSchedule?.weekly) return map
+    if (!workingHoursWeekly) return map
 
-    for (const rule of workingSchedule.weekly) {
+    for (const rule of workingHoursWeekly) {
       const [sh, sm] = rule.start.split(':').map(Number)
       const [eh, em] = rule.end.split(':').map(Number)
       if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) continue
@@ -65,67 +62,43 @@ export function CalendarGrid({
     }
 
     return map
-  }, [workingSchedule?.weekly])
+  }, [workingHoursWeekly])
 
-  const hasWorkingSchedule = Boolean(scheduleTimeZone && scheduleByWeekday.size > 0)
+  const hasWorkingHours = scheduleByIsoWeekday.size > 0
 
-  const dates = useMemo(
-    () => Array.from({ length: days }, (_, i) => addDaysInTimeZone(startDate, i, timeZone)),
-    [startDate, days, timeZone]
-  )
-  const dateParts = useMemo(() => dates.map(d => getTimeZoneParts(d, timeZone)), [dates, timeZone])
+  const ownerDateStarts = useMemo(() => {
+    // Used only for display formatting (weekday/month/day) in the owner timezone.
+    return ownerDays.map(d => new Date(d.startUtcMs))
+  }, [ownerDays])
 
   const { workStartHour, workEndHour } = useMemo(() => {
     let minMinute = DEFAULT_VIEW_START * 60
     let maxMinute = DEFAULT_VIEW_END * 60
 
-    if (scheduleTimeZone && scheduleByWeekday.size > 0) {
-      for (const dp of dateParts) {
-        // Use local noon to pick the "owner date" that corresponds to this viewer day.
-        const noonInstant = makeDateInTimeZone({
-          year: dp.year,
-          month: dp.month,
-          day: dp.day,
-          hour: 12,
-          minute: 0,
-          second: 0
-        }, timeZone)
-
-        const ownerWeekday = getTimeZoneWeekday(noonInstant, scheduleTimeZone)
-        const rule = scheduleByWeekday.get(ownerWeekday)
+    if (hasWorkingHours) {
+      for (const day of ownerDays) {
+        const rule = scheduleByIsoWeekday.get(day.dayOfWeek)
         if (!rule) continue
 
-        const ownerDate = getTimeZoneParts(noonInstant, scheduleTimeZone)
+        const ymd = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(day.ownerDate)
+        if (!ymd) continue
+        const year = Number(ymd[1])
+        const month = Number(ymd[2])
+        const dom = Number(ymd[3])
+
         const startHour = Math.floor(rule.startMin / 60)
         const startMinute = rule.startMin % 60
         const endHour = Math.floor(rule.endMin / 60)
         const endMinute = rule.endMin % 60
 
-        const ownerStartInstant = makeDateInTimeZone({
-          year: ownerDate.year,
-          month: ownerDate.month,
-          day: ownerDate.day,
-          hour: startHour,
-          minute: startMinute,
-          second: 0
-        }, scheduleTimeZone)
+        const ownerStartInstant = makeDateInTimeZone({ year, month, day: dom, hour: startHour, minute: startMinute, second: 0 }, ownerTimeZone)
+        const ownerEndInstant = makeDateInTimeZone({ year, month, day: dom, hour: endHour, minute: endMinute, second: 0 }, ownerTimeZone)
 
-        const ownerEndInstant = makeDateInTimeZone({
-          year: ownerDate.year,
-          month: ownerDate.month,
-          day: ownerDate.day,
-          hour: endHour,
-          minute: endMinute,
-          second: 0
-        }, scheduleTimeZone)
-
-        const viewStart = getTimeZoneParts(ownerStartInstant, timeZone)
-        const viewEnd = getTimeZoneParts(ownerEndInstant, timeZone)
+        const viewStart = getTimeZoneParts(ownerStartInstant, viewTimeZone)
+        const viewEnd = getTimeZoneParts(ownerEndInstant, viewTimeZone)
 
         const viewStartMin = viewStart.hour * 60 + viewStart.minute
         let viewEndMin = viewEnd.hour * 60 + viewEnd.minute
-
-        // Handle rare overnight mapping.
         if (viewEndMin <= viewStartMin) viewEndMin += 24 * 60
 
         minMinute = Math.min(minMinute, viewStartMin)
@@ -141,71 +114,36 @@ export function CalendarGrid({
     }
 
     return { workStartHour: start, workEndHour: end }
-  }, [dateParts, scheduleByWeekday, scheduleTimeZone, timeZone])
+  }, [hasWorkingHours, ownerDays, ownerTimeZone, scheduleByIsoWeekday, viewTimeZone])
 
   const hours = useMemo(() => getHourSlots(workStartHour, workEndHour), [workEndHour, workStartHour])
-
-  const windowStartDay = useMemo(
-    () => (windowStart ? getStartOfDayInTimeZone(windowStart, timeZone) : null),
-    [windowStart, timeZone]
-  )
-  const windowEndDay = useMemo(
-    () => (windowEnd ? getStartOfDayInTimeZone(windowEnd, timeZone) : null),
-    [windowEnd, timeZone]
-  )
-
-  const isDayInWindow = (date: Date): boolean => {
-    if (!windowStartDay || !windowEndDay) return true
-    return date.getTime() >= windowStartDay.getTime() && date.getTime() <= windowEndDay.getTime()
-  }
-
-  const isWindowFirstDay = (date: Date): boolean => {
-    if (!windowStartDay) return false
-    return date.getTime() === windowStartDay.getTime()
-  }
 
   return (
     <div 
       className="relative"
       style={{ opacity }}
     >
-        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-0 border border-border rounded-lg overflow-hidden">
+        <div
+          className="grid gap-0 border border-border rounded-lg overflow-hidden"
+          style={{ gridTemplateColumns: `auto repeat(${Math.max(1, ownerDays.length)}, minmax(0, 1fr))` }}
+        >
           <div className="bg-card border-b border-r border-border" />
           
-          {dates.map((date, idx) => {
-            const isToday = date.getTime() === today.getTime()
-            const inWindow = isDayInWindow(date)
-            const dayHasAvailability = (() => {
-              if (!hasWorkingSchedule) return true
-
-              const dp = dateParts[idx]
-              const noonInstant = makeDateInTimeZone({
-                year: dp.year,
-                month: dp.month,
-                day: dp.day,
-                hour: 12,
-                minute: 0,
-                second: 0
-              }, timeZone)
-
-              const ownerWeekday = getTimeZoneWeekday(noonInstant, scheduleTimeZone!)
-              return scheduleByWeekday.has(ownerWeekday)
-            })()
+          {ownerDays.map((day, idx) => {
+            const dayHasAvailability = !hasWorkingHours || scheduleByIsoWeekday.has(day.dayOfWeek)
+            const isToday = day.ownerDate === todayOwnerDate
             
             return (
               <div
                 key={idx}
                 className={cn(
                   'border-b border-border p-2 text-center text-xs sm:text-sm tracking-wide whitespace-nowrap leading-tight',
-                  (!dayHasAvailability || !inWindow) && 'fb-day-header-unavailable',
+                  !dayHasAvailability && 'fb-day-header-unavailable',
                   isToday && 'bg-primary/15 ring-1 ring-primary/40 current-day-pulse border-l-[3px] border-l-foreground/40 dark:border-l-foreground/60'
                 )}
               >
-                <div className={cn(
-                  isToday ? 'text-primary font-semibold' : undefined,
-                  !dayHasAvailability && !isToday && 'text-muted-foreground'
-                )}>
-                  {formatDateHeaderInTimeZone(date, timeZone)}
+                <div className={cn(!dayHasAvailability && 'text-muted-foreground')}>
+                  {formatDateHeaderInTimeZone(ownerDateStarts[idx], ownerTimeZone)}
                 </div>
               </div>
             )
@@ -222,56 +160,60 @@ export function CalendarGrid({
                 <div className="bg-card border-r border-border" />
               )}
               
-              {dates.map((date, dateIdx) => {
-                const inWindow = isDayInWindow(date)
-                const isTodayColumn = date.getTime() === today.getTime()
+              {ownerDays.map((day, dayIdx) => {
+                const isTodayColumn = day.ownerDate === todayOwnerDate
 
                 const isAvailable = (() => {
-                  if (!hasWorkingSchedule) {
+                  if (!hasWorkingHours) {
                     return hour >= DEFAULT_VIEW_START && hour < DEFAULT_VIEW_END
                   }
 
-                  const dp = dateParts[dateIdx]
-                  const cellInstant = makeDateInTimeZone({
-                    year: dp.year,
-                    month: dp.month,
-                    day: dp.day,
-                    hour,
-                    minute: 0,
-                    second: 0
-                  }, timeZone)
-
-                  const ownerWeekday = getTimeZoneWeekday(cellInstant, scheduleTimeZone!)
-                  const rule = scheduleByWeekday.get(ownerWeekday)
+                  const rule = scheduleByIsoWeekday.get(day.dayOfWeek)
                   if (!rule) return false
 
-                  const ownerParts = getTimeZoneParts(cellInstant, scheduleTimeZone!)
-                  const mins = ownerParts.hour * 60 + ownerParts.minute
-                  return mins >= rule.startMin && mins < rule.endMin
+                  const ymd = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(day.ownerDate)
+                  if (!ymd) return false
+                  const year = Number(ymd[1])
+                  const month = Number(ymd[2])
+                  const dom = Number(ymd[3])
+
+                  const startHour = Math.floor(rule.startMin / 60)
+                  const startMinute = rule.startMin % 60
+                  const endHour = Math.floor(rule.endMin / 60)
+                  const endMinute = rule.endMin % 60
+
+                  const ownerStartInstant = makeDateInTimeZone({ year, month, day: dom, hour: startHour, minute: startMinute, second: 0 }, ownerTimeZone)
+                  const ownerEndInstant = makeDateInTimeZone({ year, month, day: dom, hour: endHour, minute: endMinute, second: 0 }, ownerTimeZone)
+
+                  const viewStart = getTimeZoneParts(ownerStartInstant, viewTimeZone)
+                  const viewEnd = getTimeZoneParts(ownerEndInstant, viewTimeZone)
+
+                  const viewStartMin = viewStart.hour * 60 + viewStart.minute
+                  let viewEndMin = viewEnd.hour * 60 + viewEnd.minute
+                  if (viewEndMin <= viewStartMin) viewEndMin += 24 * 60
+
+                  const mins = hour * 60
+                  return mins >= viewStartMin && mins < viewEndMin
                 })()
 
-                const suppressPast = isWindowFirstDay(date)
                 const isFirstHour = hour === workStartHour
-                const dayBlocks = isFirstHour && inWindow
-                  ? getDayBusyBlockRenderInfos({
-                      date,
-                      busyBlocks,
+                const dayBlocks = isFirstHour
+                  ? getOwnerDayBusyIntervalRenderInfos({
+                      ownerDay: day,
+                      busy,
+                      viewTimeZone,
                       workStart: workStartHour,
                       workEnd: workEndHour,
-                      cellHeight: CELL_HEIGHT,
-                      timeZone,
-                      calendarTimeZone: _calendarTimeZone
+                      cellHeight: CELL_HEIGHT
                     })
                   : []
                 
                 return (
                   <div
-                    key={`${dateIdx}-${hour}`}
+                    key={`${dayIdx}-${hour}`}
                     className={cn(
                       'relative min-h-[48px] border-r border-b border-border',
-                      !inWindow
-                        ? 'fb-cell-outside-window'
-                        : (isAvailable ? 'fb-cell-available' : 'fb-cell-unavailable'),
+                      isAvailable ? 'fb-cell-available' : 'fb-cell-unavailable',
                       isTodayColumn && 'border-l-[3px] border-l-foreground/40 dark:border-l-foreground/60'
                     )}
                   >
@@ -279,17 +221,17 @@ export function CalendarGrid({
                       <div className="absolute left-0 right-0" style={{ top: 0, height: `${(workEndHour - workStartHour) * CELL_HEIGHT}px` }}>
                         {dayBlocks.map((block, blockIdx) => (
                           <div
-                            key={`${block.start.toISOString()}-${blockIdx}`}
+                            key={`${block.startUtcMs}-${block.endUtcMs}-${blockIdx}`}
                             className={cn(
                               'fb-busy-block',
-                              !suppressPast && block.visibleEnd <= now && 'opacity-50'
+                              block.visibleEndUtcMs <= now.getTime() && 'opacity-50'
                             )}
                             style={{
                               top: `${block.topPx}px`,
                               height: `${block.heightPx}px`,
                               zIndex: 10
                             }}
-                            title={formatTimeRangeInTimeZone(block.visibleStart, block.visibleEnd, timeZone)}
+                            title={formatTimeRangeInTimeZone(new Date(block.visibleStartUtcMs), new Date(block.visibleEndUtcMs), viewTimeZone)}
                           >
                             <span className="text-xs font-semibold uppercase tracking-wide">
                               Busy
