@@ -2,6 +2,8 @@
 
 A professional free/busy calendar viewer that displays real-time availability from an iCal feed.
 
+![coverage](badges/coverage.svg) ![tests](badges/tests.svg)
+
 ## Features
 
 - **Real-time Calendar Integration**: Fetches and displays busy/free time from an iCal feed
@@ -19,25 +21,35 @@ npm install
 
 2. Set up your environment variables:
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-3. Edit `.env` and add your iCal URL:
-```
-# Example: Proton Calendar iCal URL when you "Share" a calendar
-VITE_ICAL_URL=https://calendar.protonmail.com/api/calendar/v1/url/YOUR_CALENDAR_ID/calendar.ics
-
-## Example: Google Calendar iCal URL
-# VITE_ICAL_URL=https://calendar.google.com/calendar/ical/YOUR_CALENDAR_ID/public/basic.ics
-
-## Example: Outlook Calendar iCal URL
-# VITE_ICAL_URL=https://outlook.office.com/owa/calendar/YOUR_CALENDAR_ID/calendar.ics
+3. Edit `.env.local` and set the backend API URL:
+```bash
+# Defaults to this if unset
+VITE_FREEBUSY_API=http://localhost:8787/freebusy
 ```
 
 4. Start the development server:
 ```bash
 npm run dev
 ```
+
+## Testing
+
+Unit tests (updates `badges/tests.svg`):
+```bash
+npm test
+```
+
+Coverage (CLI summary and HTML report in `coverage/`, updates both badges):
+```bash
+npm run test:coverage
+```
+
+Badges are generated locally and committed to the repo:
+- Coverage: `badges/coverage.svg`
+- Tests: `badges/tests.svg`
 
 ## CloudFlare Pages Deployment
 
@@ -53,18 +65,8 @@ npm run dev
 
 In CloudFlare Pages dashboard, add the following environment variable:
 
-- **Variable name**: `VITE_ICAL_URL` (for build time) or `ICAL_URL` (runtime)
-- **Value**: Your iCal URL (e.g., `https://calendar.protonmail.com/api/calendar/v1/url/YOUR_CALENDAR_ID/calendar.ics`)
-
-### Getting Your iCal URL
-
-1. Log into your calendar service (e.g., ProtonMail, Google Calendar, Outlook)
-2. Navigate to Calendar Settings
-3. Find the "Share" or "Calendar Address" section
-4. Copy the iCal/ICS URL
-5. Use this URL as your `ICAL_URL` environment variable
-
-**Important**: The iCal URL contains sensitive information. Keep it secure and do not commit it to version control.
+- **Variable name**: `VITE_FREEBUSY_API`
+- **Value**: Your deployed FreeBusy API endpoint (e.g., `https://your-api.example.com/freebusy`)
 
 ### Custom Domain Setup
 

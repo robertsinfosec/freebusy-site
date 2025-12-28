@@ -127,6 +127,11 @@ web_modules/
 # Optional stylelint cache
 .stylelintcache
 
+# Build-generated version artifacts
+version.txt
+public/version.txt
+src/version.generated.ts
+
 # Microbundle cache
 .rpt2_cache/
 .rts2_cache_cjs/

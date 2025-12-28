@@ -136,7 +136,7 @@ export function parseICalData(icalText: string): BusyBlock[] {
     }
   }
   
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_ICAL === 'true') {
     const allDayCount = events.filter(e => e.isAllDay).length
     // Debug: surface parsing results for all-day troubleshooting
     console.debug('[ical-parser] parsed events', {

@@ -3,7 +3,7 @@ process.env.TAILWIND_LIGHTNINGCSS = 'never'
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import { defineConfig, PluginOption } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 
 import sparkPlugin from "@github/spark/spark-vite-plugin";
 import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
@@ -13,6 +13,11 @@ const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    host: true,
+    port: 5000,
+    strictPort: true
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -50,4 +55,10 @@ export default defineConfig({
       '@': resolve(projectRoot, 'src')
     }
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    globals: true,
+    css: true
+  }
 });
