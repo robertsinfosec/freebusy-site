@@ -148,4 +148,37 @@ describe('useFreeBusy', () => {
 
     unmount()
   })
+
+  it('pads the first week back to weekStartDay and marks pre-window days out-of-window', async () => {
+    mockFetchOnce({
+      status: 200,
+      ok: true,
+      body: {
+        version: '25.1229.1650',
+        generatedAtUtc: '2025-12-29T16:53:43.718Z',
+        calendar: { timeZone: 'America/New_York', weekStartDay: 7 },
+        window: {
+          startDate: '2025-12-29',
+          endDateInclusive: '2026-01-25',
+          startUtc: '2025-12-29T05:00:00.000Z',
+          endUtcExclusive: '2026-01-26T05:00:00.000Z'
+        },
+        workingHours: { weekly: [] },
+        busy: []
+      }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.weekStartDay).toBe(7)
+    expect(result.current.ownerWeeks.length).toBeGreaterThan(0)
+    expect(result.current.ownerWeeks[0][0].ownerDate).toBe('2025-12-28')
+    expect(result.current.ownerWeeks[0][0].inWindow).toBe(false)
+
+    unmount()
+  })
 })

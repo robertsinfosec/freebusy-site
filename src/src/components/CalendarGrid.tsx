@@ -166,7 +166,8 @@ export function CalendarGrid({
           <div className="bg-card border-b border-r border-border" />
           
           {ownerDays.map((day, idx) => {
-            const dayHasAvailability = !hasWorkingHours || scheduleByIsoWeekday.has(day.dayOfWeek)
+            const inWindow = day.inWindow !== false
+            const dayHasAvailability = inWindow && (!hasWorkingHours || scheduleByIsoWeekday.has(day.dayOfWeek))
             const isToday = day.ownerDate === todayOwnerDate
             const fullLabel = formatDateHeaderInTimeZone(ownerDateStarts[idx], ownerTimeZone)
             
@@ -202,8 +203,10 @@ export function CalendarGrid({
               
               {ownerDays.map((day, dayIdx) => {
                 const isTodayColumn = day.ownerDate === todayOwnerDate
+                const inWindow = day.inWindow !== false
 
                 const availability = (() => {
+                  if (!inWindow) return { kind: 'none' as const }
                   const interval = viewWorkIntervalsByDayIdx[dayIdx]
                   if (!interval) return { kind: 'none' as const }
 

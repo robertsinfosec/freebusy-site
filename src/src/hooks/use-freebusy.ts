@@ -4,7 +4,7 @@ import {
   type FreeBusyResponseDto,
   FREEBUSY_UNAVAILABLE_MESSAGE,
   interpretFreeBusyHttpResult,
-  buildOwnerDays,
+  buildOwnerDaysForWindow,
   chunkOwnerDaysByWeekStart,
   parseBusyIntervals,
   type OwnerDay,
@@ -117,7 +117,12 @@ export function useFreeBusy() {
       const ownerTimeZone = data.calendar?.timeZone ?? null
       const weekStartDay = data.calendar?.weekStartDay ?? null
       const ownerDays = ownerTimeZone
-        ? buildOwnerDays({ ownerTimeZone, startDate: data.window.startDate, endDateInclusive: data.window.endDateInclusive })
+        ? buildOwnerDaysForWindow({
+            ownerTimeZone,
+            startDate: data.window.startDate,
+            endDateInclusive: data.window.endDateInclusive,
+            weekStartDay
+          })
         : []
       const ownerWeeks = weekStartDay
         ? chunkOwnerDaysByWeekStart({ ownerDays, weekStartDay })

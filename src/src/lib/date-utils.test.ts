@@ -6,7 +6,7 @@ import {
   formatTimeRange,
   getStartOfDay,
   getStartOfWeek,
-  isSameDay,
+  isSameUTCDay,
   isWeekend,
   isWorkingHour
 } from '@/lib/date-utils'
@@ -34,9 +34,9 @@ describe('date-utils', () => {
     expect(start.toISOString().slice(0, 10)).toBe('2025-12-21')
   })
 
-  it('isSameDay matches year/month/day', () => {
-    expect(isSameDay(new Date('2025-12-27T00:00:00Z'), new Date('2025-12-27T23:59:59Z'))).toBe(true)
-    expect(isSameDay(new Date('2025-12-27T00:00:00Z'), new Date('2025-12-28T00:00:00Z'))).toBe(false)
+  it('isSameUTCDay matches year/month/day', () => {
+    expect(isSameUTCDay(new Date('2025-12-27T00:00:00Z'), new Date('2025-12-27T23:59:59Z'))).toBe(true)
+    expect(isSameUTCDay(new Date('2025-12-27T00:00:00Z'), new Date('2025-12-28T00:00:00Z'))).toBe(false)
   })
 
   it('isWeekend recognizes Saturday/Sunday', () => {

@@ -94,6 +94,7 @@ export type OwnerDay = {
   dayOfWeek: number // 1=Mon ... 7=Sun
   startUtcMs: number
   endUtcMs: number
+  inWindow?: boolean
 }
 
 function parseIsoUtcToMs(value: string): number | null {
@@ -155,6 +156,30 @@ export function buildOwnerDays(args: {
   }
 
   return days
+}
+
+export function buildOwnerDaysForWindow(args: {
+  ownerTimeZone: string
+  startDate: string
+  endDateInclusive: string
+  weekStartDay?: number | null
+}): OwnerDay[] {
+  const { ownerTimeZone, startDate, endDateInclusive, weekStartDay } = args
+
+  const windowDays = buildOwnerDays({ ownerTimeZone, startDate, endDateInclusive }).map(d => ({ ...d, inWindow: true }))
+  if (!weekStartDay || windowDays.length === 0) return windowDays
+
+  const first = windowDays[0]
+  if (first.dayOfWeek === weekStartDay) return windowDays
+
+  const daysBack = (first.dayOfWeek + 7 - weekStartDay) % 7
+  if (daysBack <= 0) return windowDays
+
+  const paddedStart = addDaysToYmd(startDate, -daysBack)
+  const paddedEnd = addDaysToYmd(startDate, -1)
+  const preWindowDays = buildOwnerDays({ ownerTimeZone, startDate: paddedStart, endDateInclusive: paddedEnd }).map(d => ({ ...d, inWindow: false }))
+
+  return [...preWindowDays, ...windowDays]
 }
 
 export function chunkOwnerDaysByWeekStart(args: {

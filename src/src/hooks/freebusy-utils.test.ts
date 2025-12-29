@@ -6,6 +6,7 @@ import {
   FREEBUSY_UNAVAILABLE_MESSAGE,
   interpretFreeBusyHttpResult,
   buildOwnerDays,
+  buildOwnerDaysForWindow,
   chunkOwnerDaysByWeekStart,
   parseBusyIntervals
 } from '@/hooks/freebusy-utils'
@@ -115,5 +116,23 @@ describe('freebusy-utils', () => {
     expect(weeks).toHaveLength(2)
     expect(weeks[0].map(d => d.ownerDate)).toEqual(['2026-01-04'])
     expect(weeks[1].map(d => d.ownerDate)).toEqual(['2026-01-05', '2026-01-06'])
+  })
+
+  it('pads owner days back to weekStartDay and marks them out-of-window', () => {
+    const ownerDays = buildOwnerDaysForWindow({
+      ownerTimeZone: 'America/New_York',
+      startDate: '2025-12-29', // Monday
+      endDateInclusive: '2026-01-04',
+      weekStartDay: 7 // Sunday
+    })
+
+    // First visible date should be the Sunday before the window start.
+    expect(ownerDays[0].ownerDate).toBe('2025-12-28')
+    expect(ownerDays[0].dayOfWeek).toBe(7)
+    expect(ownerDays[0].inWindow).toBe(false)
+
+    const startDay = ownerDays.find(d => d.ownerDate === '2025-12-29')
+    expect(startDay).toBeTruthy()
+    expect(startDay!.inWindow).toBe(true)
   })
 })
