@@ -23,7 +23,7 @@ servers:
   - url: https://api.freebusy.robertsinfosec.com
     description: Production deployment
   - url: http://localhost:8787
-    description: Local development via `wrangler dev`
+    description: Local development via `wrangler dev` (run from the `src/` directory)
 
 tags:
   - name: health

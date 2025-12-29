@@ -25,6 +25,7 @@ A professional free/busy calendar viewer that displays real-time availability fr
 
 1. Install dependencies:
 ```bash
+cd src
 npm install
 ```
 
@@ -48,11 +49,13 @@ npm run dev
 
 Unit tests (updates `badges/tests.svg`):
 ```bash
+cd src
 npm test
 ```
 
 Coverage (CLI summary and HTML report in `coverage/`, updates both badges):
 ```bash
+cd src
 npm run test:coverage
 ```
 
@@ -65,7 +68,8 @@ Badges are generated locally and committed to the repo:
 ### Initial Setup
 
 1. Connect your repository to CloudFlare Pages
-2. Configure build settings:
+2. Configure build settings (the app lives under `src/`):
+   - **Root directory**: `src`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
    - **Node version**: 18 or higher

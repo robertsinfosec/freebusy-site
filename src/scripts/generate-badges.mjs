@@ -5,9 +5,18 @@ import { makeBadge } from "badge-maker";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const root = resolve(__dirname, "..");
-const badgesDir = resolve(root, "badges");
-const coverageSummaryPath = resolve(root, "coverage", "coverage-summary.json");
+const projectRoot = resolve(__dirname, "..");
+const repoRoot = resolve(projectRoot, "..");
+
+// Badges live in the repo root (README references `badges/...`).
+const badgesDir = resolve(repoRoot, "badges");
+
+// Coverage output is typically generated relative to the package directory.
+// Prefer `src/coverage/...` (projectRoot) but fall back to repo-root `coverage/...`.
+const coverageSummaryCandidates = [
+  resolve(projectRoot, "coverage", "coverage-summary.json"),
+  resolve(repoRoot, "coverage", "coverage-summary.json"),
+];
 
 function parseArgs(argv) {
   const args = {
@@ -41,17 +50,19 @@ function coverageColor(pct) {
 }
 
 async function readCoveragePct() {
-  try {
-    const raw = await readFile(coverageSummaryPath, "utf8");
-    const json = JSON.parse(raw);
-    const pct = json?.total?.lines?.pct;
-    if (!Number.isFinite(pct)) {
-      return null;
+  for (const filePath of coverageSummaryCandidates) {
+    try {
+      const raw = await readFile(filePath, "utf8");
+      const json = JSON.parse(raw);
+      const pct = json?.total?.lines?.pct;
+      if (Number.isFinite(pct)) {
+        return pct;
+      }
+    } catch {
+      // Try next candidate.
     }
-    return pct;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 async function writeBadge(filename, label, message, color) {
