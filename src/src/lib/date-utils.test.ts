@@ -2,13 +2,22 @@ import { describe, expect, it } from 'vitest'
 
 import {
   addDays,
+  addDaysInTimeZone,
   formatTime,
   formatTimeRange,
+  formatTimeRangeInTimeZone,
   getStartOfDay,
+  getStartOfDayInTimeZone,
   getStartOfWeek,
+  getStartOfWeekInTimeZone,
+  getTimeZoneDisplayName,
+  getTimeZoneOffsetMinutes,
+  getTimeZoneParts,
+  isWeekendInTimeZone,
   isSameUTCDay,
   isWeekend,
-  isWorkingHour
+  isWorkingHour,
+  makeDateInTimeZone
 } from '@/lib/date-utils'
 
 describe('date-utils', () => {
@@ -62,5 +71,69 @@ describe('date-utils', () => {
     const label = formatTimeRange(start, end)
     expect(label).toContain(' - ')
     expect(label.length).toBeGreaterThan(5)
+  })
+
+  it('getTimeZoneOffsetMinutes returns expected offsets for America/New_York', () => {
+    // Winter: EST (UTC-5)
+    expect(getTimeZoneOffsetMinutes(new Date('2025-01-01T00:00:00Z'), 'America/New_York')).toBe(-300)
+    // Summer: EDT (UTC-4)
+    expect(getTimeZoneOffsetMinutes(new Date('2025-07-01T00:00:00Z'), 'America/New_York')).toBe(-240)
+  })
+
+  it('makeDateInTimeZone constructs the correct UTC instant', () => {
+    const nyMidnight = makeDateInTimeZone({ year: 2025, month: 1, day: 1, hour: 0, minute: 0, second: 0 }, 'America/New_York')
+    expect(nyMidnight.toISOString()).toBe('2025-01-01T05:00:00.000Z')
+
+    const nySummerMidnight = makeDateInTimeZone({ year: 2025, month: 7, day: 1, hour: 0, minute: 0, second: 0 }, 'America/New_York')
+    expect(nySummerMidnight.toISOString()).toBe('2025-07-01T04:00:00.000Z')
+  })
+
+  it('getTimeZoneParts returns stable numeric parts', () => {
+    const p = getTimeZoneParts(new Date('2025-01-01T05:34:56Z'), 'America/New_York')
+    // 05:34Z on Jan 1 is 00:34 in New York (EST)
+    expect(p.year).toBe(2025)
+    expect(p.month).toBe(1)
+    expect(p.day).toBe(1)
+    expect(p.hour).toBe(0)
+    expect(p.minute).toBe(34)
+  })
+
+  it('getStartOfDayInTimeZone returns owner-midnight instant', () => {
+    const d = new Date('2025-01-01T15:04:05Z')
+    const start = getStartOfDayInTimeZone(d, 'America/New_York')
+    // Owner day for 2025-01-01 in NY begins at 05:00Z (EST)
+    expect(start.toISOString()).toBe('2025-01-01T05:00:00.000Z')
+  })
+
+  it('addDaysInTimeZone advances calendar days in the target timezone', () => {
+    const start = makeDateInTimeZone({ year: 2025, month: 1, day: 1, hour: 0, minute: 0, second: 0 }, 'America/New_York')
+    const plusTwo = addDaysInTimeZone(start, 2, 'America/New_York')
+    expect(plusTwo.toISOString()).toBe('2025-01-03T05:00:00.000Z')
+  })
+
+  it('getStartOfWeekInTimeZone returns Sunday-start (weekday 0) in the target timezone', () => {
+    // 2025-01-01 is Wednesday; Sunday start in NY is 2024-12-29 00:00 NY
+    const d = new Date('2025-01-01T12:00:00Z')
+    const start = getStartOfWeekInTimeZone(d, 'America/New_York')
+    expect(start.toISOString()).toBe('2024-12-29T05:00:00.000Z')
+  })
+
+  it('isWeekendInTimeZone evaluates weekend in the target timezone', () => {
+    // 2025-01-04 is Saturday in NY
+    expect(isWeekendInTimeZone(new Date('2025-01-04T12:00:00Z'), 'America/New_York')).toBe(true)
+    // 2025-01-06 is Monday in NY
+    expect(isWeekendInTimeZone(new Date('2025-01-06T12:00:00Z'), 'America/New_York')).toBe(false)
+  })
+
+  it('formatTimeRangeInTimeZone formats using viewer timezone parts', () => {
+    const start = new Date('2025-01-01T05:00:00Z') // 12:00 AM EST
+    const end = new Date('2025-01-01T06:30:00Z') // 1:30 AM EST
+    expect(formatTimeRangeInTimeZone(start, end, 'America/New_York')).toBe('12 AM - 1:30 AM')
+  })
+
+  it('getTimeZoneDisplayName falls back to the timezone id when needed', () => {
+    const name = getTimeZoneDisplayName(new Date('2025-01-01T00:00:00Z'), 'Etc/UTC', 'short')
+    expect(typeof name).toBe('string')
+    expect(name.length).toBeGreaterThan(0)
   })
 })

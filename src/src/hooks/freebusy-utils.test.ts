@@ -135,4 +135,28 @@ describe('freebusy-utils', () => {
     expect(startDay).toBeTruthy()
     expect(startDay!.inWindow).toBe(true)
   })
+
+  it('pads owner days forward to the end of the week and marks them out-of-window', () => {
+    // Mirrors the UI expectation: even if the window ends mid-week (e.g. Monday),
+    // still render the full trailing week.
+    const ownerDays = buildOwnerDaysForWindow({
+      ownerTimeZone: 'America/New_York',
+      startDate: '2025-12-30', // Tuesday
+      endDateInclusive: '2026-01-19', // Monday
+      weekStartDay: 7 // Sunday
+    })
+
+    // Should be padded through Saturday of that week.
+    expect(ownerDays.at(-1)?.ownerDate).toBe('2026-01-24')
+
+    const endDay = ownerDays.find(d => d.ownerDate === '2026-01-19')
+    expect(endDay).toBeTruthy()
+    expect(endDay!.inWindow).toBe(true)
+
+    for (const ymd of ['2026-01-20', '2026-01-21', '2026-01-22', '2026-01-23', '2026-01-24']) {
+      const d = ownerDays.find(x => x.ownerDate === ymd)
+      expect(d).toBeTruthy()
+      expect(d!.inWindow).toBe(false)
+    }
+  })
 })

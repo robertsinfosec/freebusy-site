@@ -1,111 +1,74 @@
 # robertsinfosec Free/Busy Calendar
 
-A professional free/busy calendar viewer that displays real-time availability from an iCal feed.
+A professional free/busy calendar viewer.
+
+It consumes the **Freebusy API** (separate service) which normalizes a private iCal feed into a minimal JSON payload safe for a public availability UI.
 
 ![coverage](badges/coverage.svg) ![tests](badges/tests.svg)
 
-## Features
+## What this repo contains
 
-- **Real-time Calendar Integration**: Fetches and displays normalized free/busy from the Freebusy API
-- **Owner-day Anchoring (v2)**: Day columns are anchored to the calendar owner's timezone (IANA)
-- **Viewer Timezone Switching**: Dropdown changes time labels + block placement without changing which owner-days are shown
-- **Working Hours Visualization (v2)**: Working hours come from the API and are defined in owner-local time
-- **Auto-refresh**: Calendar updates every 5 minutes to show current availability
-- **Professional Design**: Cybersecurity-themed interface with IBM Plex Mono typography
+- **Frontend only**: React + Vite app under `src/` (npm package) and `src/src/` (app code).
+- **API contract**: `docs/openapi.yaml` documents the backend response schema and time semantics.
 
-## Time Semantics (API v2)
+## Key time semantics (read this before changing date logic)
 
-- **Owner timezone (calendar anchoring)**: Day columns are generated from `window.startDate` through `window.endDateInclusive` and are anchored to `calendar.timeZone`.
-- **Viewer timezone (display only)**: The viewer timezone affects hour labels and vertical placement of blocks, but does not change which day columns exist.
-- **Busy intervals**: `busy[]` uses canonical UTC instants (`startUtc` inclusive, `endUtc` exclusive). Rendering clips intervals to each owner-day column.
-- **All-day intervals**: `kind: allDay` renders as fully busy for that owner-day column.
-- **DST correctness**: Conversions rely on IANA timezone rules (no fixed offsets).
+- **Owner-days are authoritative**: day columns come from `window.startDate` → `window.endDateInclusive` and are anchored to `calendar.timeZone`.
+- **Viewer timezone is display-only**: switching viewer TZ changes hour labels + vertical placement, but must not change which day columns exist.
+- **Busy intervals are UTC instants**: `busy[].startUtc` is inclusive and `busy[].endUtc` is exclusive; rendering clips intervals to each owner-day.
+- **All-day blocks**: `kind: "allDay"` blocks the entire owner-day.
 
-## Local Development
+Implementation references:
+- Day generation/parsing: `src/src/hooks/freebusy-utils.ts`
+- TZ-safe helpers (IANA/DST via `Intl`): `src/src/lib/date-utils.ts`
+- Busy block layout + clipping: `src/src/components/calendar-grid-utils.ts`
 
-1. Install dependencies:
+## Local development
+
 ```bash
 cd src
 npm install
-```
-
-2. Set up your environment variables:
-```bash
 cp .env.example .env.local
-```
-
-3. Edit `.env.local` and set the backend API URL:
-```bash
-# Defaults to this if unset
-VITE_FREEBUSY_API=http://localhost:8787/freebusy
-```
-
-4. Start the development server:
-```bash
 npm run dev
 ```
 
+Environment:
+- `VITE_FREEBUSY_API` (defaults to `http://localhost:8787/freebusy`)
+
 ## Testing
 
-Unit tests (updates `badges/tests.svg`):
+This repo wraps Vitest so test runs also update committed badges.
+
 ```bash
 cd src
 npm test
-```
-
-Coverage (CLI summary and HTML report in `coverage/`, updates both badges):
-```bash
-cd src
 npm run test:coverage
 ```
 
-Badges are generated locally and committed to the repo:
-- Coverage: `badges/coverage.svg`
-- Tests: `badges/tests.svg`
+Notes:
+- Badges are committed in `badges/` at the repo root.
+- Coverage HTML is emitted to `src/coverage/`.
 
-## CloudFlare Pages Deployment
+## Deployment (Cloudflare Pages)
 
-### Initial Setup
+Build settings:
+- Root directory: `src`
+- Build command: `npm run build`
+- Output directory: `dist`
 
-1. Connect your repository to CloudFlare Pages
-2. Configure build settings (the app lives under `src/`):
-   - **Root directory**: `src`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-   - **Node version**: 18 or higher
+Set `VITE_FREEBUSY_API` to your deployed Freebusy API endpoint.
 
-### Environment Variables
+## Contributing / community
 
-In CloudFlare Pages dashboard, add the following environment variable:
+- Code of Conduct: see `CODE_OF_CONDUCT.md`
+- Contributing guide: see `CONTRIBUTING.md`
+- Security policy: see `SECURITY.md`
 
-- **Variable name**: `VITE_FREEBUSY_API`
-- **Value**: Your deployed FreeBusy API endpoint (e.g., `https://your-api.example.com/freebusy`)
-
-### Custom Domain Setup
-
-To host at `freebusy.robertsinfosec.com`:
-
-1. In CloudFlare Pages, go to your project's "Custom domains" section
-2. Click "Set up a custom domain"
-3. Enter `freebusy.robertsinfosec.com`
-4. CloudFlare will automatically configure the DNS records
-
-## Technical Details
-
-- **Framework**: React 19 with TypeScript
-- **Styling**: Tailwind CSS v4 with custom cybersecurity theme
-- **Components**: Shadcn UI components
-- **Icons**: Phosphor Icons
-- **Animations**: Framer Motion
-- **Font**: IBM Plex Mono (Google Fonts)
-
-## Browser Support
-
-Modern browsers with ES2020+ support:
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
+Issues and security:
+- Please use the GitHub Issue templates when opening issues.
+- Please report vulnerabilities privately via GitHub Security Advisories (preferred) or `security@robertsinfosec.com`.
+- `security.txt` is published at `/.well-known/security.txt`.
 
 ## License
 
-Private use only.
+MIT — see `LICENSE`.

@@ -169,17 +169,31 @@ export function buildOwnerDaysForWindow(args: {
   const windowDays = buildOwnerDays({ ownerTimeZone, startDate, endDateInclusive }).map(d => ({ ...d, inWindow: true }))
   if (!weekStartDay || windowDays.length === 0) return windowDays
 
+  const isoWeekEndDay = ((weekStartDay + 5) % 7) + 1
+
   const first = windowDays[0]
-  if (first.dayOfWeek === weekStartDay) return windowDays
+  const last = windowDays.at(-1)!
 
   const daysBack = (first.dayOfWeek + 7 - weekStartDay) % 7
-  if (daysBack <= 0) return windowDays
+  const daysForward = (isoWeekEndDay + 7 - last.dayOfWeek) % 7
 
-  const paddedStart = addDaysToYmd(startDate, -daysBack)
-  const paddedEnd = addDaysToYmd(startDate, -1)
-  const preWindowDays = buildOwnerDays({ ownerTimeZone, startDate: paddedStart, endDateInclusive: paddedEnd }).map(d => ({ ...d, inWindow: false }))
+  const preWindowDays = daysBack > 0
+    ? (() => {
+        const paddedStart = addDaysToYmd(startDate, -daysBack)
+        const paddedEnd = addDaysToYmd(startDate, -1)
+        return buildOwnerDays({ ownerTimeZone, startDate: paddedStart, endDateInclusive: paddedEnd }).map(d => ({ ...d, inWindow: false }))
+      })()
+    : []
 
-  return [...preWindowDays, ...windowDays]
+  const postWindowDays = daysForward > 0
+    ? (() => {
+        const paddedStart = addDaysToYmd(endDateInclusive, 1)
+        const paddedEnd = addDaysToYmd(endDateInclusive, daysForward)
+        return buildOwnerDays({ ownerTimeZone, startDate: paddedStart, endDateInclusive: paddedEnd }).map(d => ({ ...d, inWindow: false }))
+      })()
+    : []
+
+  return [...preWindowDays, ...windowDays, ...postWindowDays]
 }
 
 export function chunkOwnerDaysByWeekStart(args: {

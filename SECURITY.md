@@ -1,31 +1,46 @@
-Thanks for helping make GitHub safe for everyone.
+# Security policy
 
-# Security
+This repository contains the **frontend website** for the robertsinfosec free/busy calendar viewer.
 
-GitHub takes the security of our software products and services seriously, including all of the open source code repositories managed through our GitHub organizations, such as [GitHub](https://github.com/GitHub).
+If you believe you’ve found a security vulnerability, please report it **privately**.
 
-Even though [open source repositories are outside of the scope of our bug bounty program](https://bounty.github.com/index.html#scope) and therefore not eligible for bounty rewards, we will ensure that your finding gets passed along to the appropriate maintainers for remediation. 
+This project also publishes `security.txt` at `/.well-known/security.txt`.
 
-## Reporting Security Issues
+## Reporting a vulnerability
 
-If you believe you have found a security vulnerability in any GitHub-owned repository, please report it to us through coordinated disclosure.
+Please **do not** open public GitHub issues for security reports.
 
-**Please do not report security vulnerabilities through public GitHub issues, discussions, or pull requests.**
+Preferred (private):
+- **GitHub Security Advisories**: https://github.com/robertsinfosec/freebusy-site/security/advisories/new
 
-Instead, please send an email to opensource-security[@]github.com.
+Alternative:
+- Email: `security@robertsinfosec.com`
 
-Please include as much of the information listed below as you can to help us better understand and resolve the issue:
+If you are unsure whether something is security-sensitive, treat it as sensitive and use one of the private channels above.
 
-  * The type of issue (e.g., buffer overflow, SQL injection, or cross-site scripting)
-  * Full paths of source file(s) related to the manifestation of the issue
-  * The location of the affected source code (tag/branch/commit or direct URL)
-  * Any special configuration required to reproduce the issue
-  * Step-by-step instructions to reproduce the issue
-  * Proof-of-concept or exploit code (if possible)
-  * Impact of the issue, including how an attacker might exploit the issue
+## Scope
 
-This information will help us triage your report more quickly.
+In scope for this repository:
+- The **frontend** app in this repo (React/Vite UI)
+- Client-side handling of Freebusy API responses
+- Build/dependency issues that affect the deployed frontend
 
-## Policy
+Out of scope (by default):
+- Vulnerabilities in the **Freebusy API** backend service (report to that service’s security process)
+- Denial of service (DoS) against shared infrastructure
+- Social engineering
 
-See [GitHub's Safe Harbor Policy](https://docs.github.com/en/site-policy/security-policies/github-bug-bounty-program-legal-safe-harbor#1-safe-harbor-terms)
+## What to include
+
+- A clear description of the issue and potential impact
+- Steps to reproduce (ideally a minimal PoC)
+- Affected commit / tag (or the approximate date you tested)
+- Any relevant configuration (e.g., `VITE_FREEBUSY_API` value)
+
+Helpful extras:
+- Any relevant browser/OS details
+- If the issue relates to time zones, include the calendar owner timezone and viewing timezone
+
+## Supported versions
+
+This project currently supports the latest code on the default branch.

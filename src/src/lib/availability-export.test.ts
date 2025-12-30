@@ -66,4 +66,133 @@ describe('availability-export', () => {
 
     expect(text).toContain('Tue, Dec 30: 9:30 AM - 4:30 PM')
   })
+
+  it('includes a Generated line when generatedAtUtcMs is provided', () => {
+    const ownerDay = {
+      ownerDate: '2025-12-29',
+      dayOfWeek: 1,
+      startUtcMs: Date.parse('2025-12-29T00:00:00.000Z'),
+      endUtcMs: Date.parse('2025-12-30T00:00:00.000Z')
+    }
+
+    const text = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone: 'Etc/UTC',
+      viewTimeZone: 'Etc/UTC',
+      workingHoursWeekly: [{ dayOfWeek: 1, start: '09:00', end: '10:00' }],
+      busy: [],
+      window: null,
+      generatedAtUtcMs: Date.parse('2025-12-29T12:34:56.000Z')
+    })
+
+    expect(text).toContain('Generated: 2025-12-29T12:34:56.000Z')
+  })
+
+  it('uses fallback working hours when weekly rules are missing', () => {
+    const ownerDay = {
+      ownerDate: '2025-12-29',
+      dayOfWeek: 1,
+      startUtcMs: Date.parse('2025-12-29T00:00:00.000Z'),
+      endUtcMs: Date.parse('2025-12-30T00:00:00.000Z')
+    }
+
+    const text = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone: 'Etc/UTC',
+      viewTimeZone: 'Etc/UTC',
+      workingHoursWeekly: null,
+      busy: [],
+      window: null
+    })
+
+    expect(text).toContain('Mon, Dec 29: 8 AM - 6 PM')
+  })
+
+  it('prints No availability when there is no working-hours rule for the day', () => {
+    const ownerDay = {
+      ownerDate: '2025-12-29',
+      dayOfWeek: 1,
+      startUtcMs: Date.parse('2025-12-29T00:00:00.000Z'),
+      endUtcMs: Date.parse('2025-12-30T00:00:00.000Z')
+    }
+
+    const text = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone: 'Etc/UTC',
+      viewTimeZone: 'Etc/UTC',
+      workingHoursWeekly: [{ dayOfWeek: 2, start: '09:00', end: '10:00' }],
+      busy: [],
+      window: null
+    })
+
+    expect(text).toContain('Mon, Dec 29: No availability')
+  })
+
+  it('prints No availability when a rule is malformed or collapses after rounding', () => {
+    const ownerDay = {
+      ownerDate: '2025-12-29',
+      dayOfWeek: 1,
+      startUtcMs: Date.parse('2025-12-29T00:00:00.000Z'),
+      endUtcMs: Date.parse('2025-12-30T00:00:00.000Z')
+    }
+
+    const invalidTime = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone: 'Etc/UTC',
+      viewTimeZone: 'Etc/UTC',
+      workingHoursWeekly: [{ dayOfWeek: 1, start: 'not-a-time', end: '10:00' }],
+      busy: [],
+      window: null
+    })
+    expect(invalidTime).toContain('Mon, Dec 29: No availability')
+
+    const inverted = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone: 'Etc/UTC',
+      viewTimeZone: 'Etc/UTC',
+      workingHoursWeekly: [{ dayOfWeek: 1, start: '10:00', end: '09:00' }],
+      busy: [],
+      window: null
+    })
+    expect(inverted).toContain('Mon, Dec 29: No availability')
+
+    const collapsedByRounding = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone: 'Etc/UTC',
+      viewTimeZone: 'Etc/UTC',
+      workingHoursWeekly: [{ dayOfWeek: 1, start: '09:10', end: '09:20' }],
+      busy: [],
+      window: null
+    })
+    expect(collapsedByRounding).toContain('Mon, Dec 29: No availability')
+  })
+
+  it('treats all-day busy as blocking the entire working window', () => {
+    const ownerTimeZone = 'Etc/UTC'
+    const viewTimeZone = 'Etc/UTC'
+
+    const ownerDay = {
+      ownerDate: '2025-12-29',
+      dayOfWeek: 1,
+      startUtcMs: Date.parse('2025-12-29T00:00:00.000Z'),
+      endUtcMs: Date.parse('2025-12-30T00:00:00.000Z')
+    }
+
+    const text = buildAvailabilityExportText({
+      ownerDays: [ownerDay],
+      ownerTimeZone,
+      viewTimeZone,
+      workingHoursWeekly: [{ dayOfWeek: 1, start: '09:00', end: '10:00' }],
+      busy: [
+        {
+          startUtcMs: Date.parse('2025-12-29T00:00:00.000Z'),
+          endUtcMs: Date.parse('2025-12-29T23:59:00.000Z'),
+          kind: 'allDay'
+        }
+      ],
+      window: null
+    })
+
+    expect(text).toContain('Mon, Dec 29: No availability')
+  })
 })

@@ -1,0 +1,9 @@
+# security.txt for robertsinfosec Free/Busy (frontend)
+# Served from: /.well-known/security.txt
+
+Contact: https://github.com/robertsinfosec/freebusy-site/security/advisories/new
+Contact: mailto:security@robertsinfosec.com
+Preferred-Languages: en
+Canonical: https://robertsinfosec.com/.well-known/security.txt
+Policy: https://github.com/robertsinfosec/freebusy-site/blob/main/SECURITY.md
+Expires: 2026-12-30T00:00:00.000Z

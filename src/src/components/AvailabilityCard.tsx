@@ -75,11 +75,16 @@ export function AvailabilityCard({
     if (!availabilityExportText) return
 
     const success = async (): Promise<boolean> => {
-      try {
-        await globalThis.navigator?.clipboard?.writeText(availabilityExportText)
-        return true
-      } catch {
-        // Fall back
+      const clipboard = globalThis.navigator?.clipboard
+      const writeText = clipboard?.writeText
+
+      if (typeof writeText === 'function') {
+        try {
+          await writeText.call(clipboard, availabilityExportText)
+          return true
+        } catch {
+          // Fall back
+        }
       }
 
       try {

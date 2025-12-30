@@ -1,0 +1,107 @@
+name: Bug report
+description: Report a bug in the free/busy viewer
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report!
+
+        For security issues, please use the **Security vulnerability report** link instead of opening a public issue.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened? What did you expect to happen?
+      placeholder: "Busy blocks render on the wrong day when viewing in Pacific time..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide clear, minimal steps.
+      placeholder: |
+        1. Open the site
+        2. Set viewing timezone to ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / recordings
+      description: Attach images/video if helpful.
+    validations:
+      required: false
+
+  - type: input
+    id: viewing_tz
+    attributes:
+      label: Viewing timezone
+      description: If relevant, which viewing timezone was selected?
+      placeholder: "America/New_York"
+    validations:
+      required: false
+
+  - type: input
+    id: calendar_tz
+    attributes:
+      label: Calendar (owner) timezone
+      description: If known, what is the calendar timezone returned by the API?
+      placeholder: "America/New_York"
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "Chrome 131 / Firefox 133 / Safari 18"
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 15 / Windows 11 / Ubuntu 24.04"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console/network logs
+      description: Paste relevant console errors, network responses (redact secrets), etc.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: api_endpoint
+    attributes:
+      label: Freebusy API endpoint
+      description: If applicable, what was your configured API endpoint?
+      placeholder: "VITE_FREEBUSY_API=http://localhost:8787/freebusy"
+    validations:
+      required: false

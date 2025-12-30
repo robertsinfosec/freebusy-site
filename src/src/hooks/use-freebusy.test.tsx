@@ -14,6 +14,19 @@ function mockFetchOnce(value: { status: number; ok: boolean; body?: unknown }) {
   ;(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(response)
 }
 
+function mockFetchOnceJsonThrows(value: { status: number; ok: boolean }) {
+  const json = vi.fn(async () => {
+    throw new Error('Invalid JSON')
+  })
+  const response = {
+    status: value.status,
+    ok: value.ok,
+    json
+  } as unknown as Response
+
+  ;(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(response)
+}
+
 describe('useFreeBusy', () => {
   beforeEach(() => {
     globalThis.fetch = vi.fn() as unknown as typeof fetch
@@ -83,6 +96,128 @@ describe('useFreeBusy', () => {
     expect(result.current.disabledMessage).toMatch(/not being shared/i)
     expect(result.current.unavailableMessage).toBeNull()
     expect(result.current.busy).toHaveLength(0)
+
+    unmount()
+  })
+
+  it('sets unavailableMessage when API returns 503 (non-disabled)', async () => {
+    mockFetchOnce({
+      status: 503,
+      ok: false,
+      body: { error: 'upstream' }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.disabledMessage).toBeNull()
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.refreshDisabledUntil).toBeNull()
+
+    unmount()
+  })
+
+  it('sets refreshDisabledUntil when API returns 429 rate limited with a rateLimit payload', async () => {
+    mockFetchOnce({
+      status: 429,
+      ok: false,
+      body: {
+        error: 'rate_limited',
+        rateLimit: {
+          nextAllowedAtUtc: '2025-12-27T12:05:00.000Z',
+          scopes: {}
+        }
+      }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.disabledMessage).toBeNull()
+    expect(result.current.unavailableMessage).toMatch(/rate limited/i)
+    expect(result.current.refreshDisabledUntil).toBe('2025-12-27T12:05:00.000Z')
+    expect(result.current.rateLimitNextAllowedAtUtc).toBe('2025-12-27T12:05:00.000Z')
+
+    unmount()
+  })
+
+  it('treats 429 rate limited without a rateLimit payload as unavailable', async () => {
+    mockFetchOnce({
+      status: 429,
+      ok: false,
+      body: {
+        error: 'rate_limited'
+      }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.refreshDisabledUntil).toBeNull()
+
+    unmount()
+  })
+
+  it('handles a successful HTTP response with invalid JSON', async () => {
+    mockFetchOnceJsonThrows({ status: 200, ok: true })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.busy).toHaveLength(0)
+
+    unmount()
+  })
+
+  it('handles a network failure during fetch', async () => {
+    ;(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'))
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.busy).toHaveLength(0)
+
+    unmount()
+  })
+
+  it('handles a success payload that lacks calendar metadata', async () => {
+    mockFetchOnce({
+      status: 200,
+      ok: true,
+      body: {
+        version: '25.1227.1200',
+        generatedAtUtc: '2025-12-27T12:00:00.000Z'
+      }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toBeNull()
+    expect(result.current.ownerTimeZone).toBeNull()
+    expect(result.current.ownerDays).toEqual([])
+    expect(result.current.ownerWeeks).toEqual([[]])
 
     unmount()
   })
