@@ -41,8 +41,11 @@
 				"ms-azuretools.vscode-docker",
 				"ms-vscode.vscode-typescript-next",
 				"oderwat.indent-rainbow",
+				"42Crunch.vscode-openapi",
+				"bierner.markdown-mermaid",
 				"GitHub.copilot",
-				"GitHub.copilot-chat"
+				"GitHub.copilot-chat",
+				"yzhang.markdown-all-in-one"
 			]
 		}
 	},

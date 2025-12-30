@@ -6,7 +6,31 @@ This document is a threat model for the free/busy calendar viewer site (React/Vi
 
 This is not a penetration test report. It captures security-relevant architecture, threats, and test hypotheses to guide engineering work and to focus any future independent assessment.
 
-Note: This folder was initially copied from the backend (Freebusy API) repo. This document adapts the structure to the frontend. The backend still matters as a dependency, but threats are framed primarily from a browser/client and static hosting perspective.
+- [Threat Model (freebusy-site frontend)](#threat-model-freebusy-site-frontend)
+  - [0. Summary](#0-summary)
+  - [1. Scope and assumptions](#1-scope-and-assumptions)
+    - [1.1 Ownership and review](#11-ownership-and-review)
+    - [1.2 In scope](#12-in-scope)
+    - [1.3 Out of scope](#13-out-of-scope)
+    - [1.4 Assumptions](#14-assumptions)
+  - [2. Assets](#2-assets)
+  - [3. Trust boundaries and data flows](#3-trust-boundaries-and-data-flows)
+    - [3.1 System context](#31-system-context)
+    - [3.2 Runtime flow (simplified)](#32-runtime-flow-simplified)
+  - [4. Threat analysis (STRIDE)](#4-threat-analysis-stride)
+    - [4.1 Spoofing](#41-spoofing)
+    - [4.2 Tampering](#42-tampering)
+    - [4.3 Repudiation](#43-repudiation)
+    - [4.4 Information disclosure](#44-information-disclosure)
+    - [4.5 Denial of service](#45-denial-of-service)
+    - [4.6 Elevation of privilege](#46-elevation-of-privilege)
+  - [5. Security requirements (control objectives)](#5-security-requirements-control-objectives)
+  - [6. Detection and response](#6-detection-and-response)
+  - [7. Pen test guidance](#7-pen-test-guidance)
+    - [7.1 Pen test requirements](#71-pen-test-requirements)
+    - [7.2 Focus areas flagged by this threat model](#72-focus-areas-flagged-by-this-threat-model)
+  - [8. Risk register](#8-risk-register)
+
 
 ## 0. Summary
 
