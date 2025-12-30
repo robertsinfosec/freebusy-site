@@ -1,10 +1,15 @@
 # robertsinfosec Free/Busy Calendar
 
+[![CI](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml/badge.svg)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml/badge.svg)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml)
+![node](https://img.shields.io/github/package-json/engines/node/robertsinfosec/freebusy-site?filename=src/package.json)
+![tests](badges/tests.svg)
+![coverage](badges/coverage.svg)
+[![Dependabot](https://img.shields.io/github/dependabot/updates/robertsinfosec/freebusy-site?label=dependabot)](https://github.com/robertsinfosec/freebusy-site/security/dependabot)
+
 A professional free/busy calendar viewer.
 
 It consumes the **Freebusy API** (separate service) which normalizes a private iCal feed into a minimal JSON payload safe for a public availability UI.
-
-![coverage](badges/coverage.svg) ![tests](badges/tests.svg)
 
 ## What this repo contains
 
@@ -71,6 +76,13 @@ Build settings:
 - **Output directory:** `dist`
 
 Set `VITE_FREEBUSY_API` to your deployed Freebusy API endpoint.
+
+## Documentation
+
+This section points to the primary internal docs for understanding and operating the frontend. Start with the architecture doc when making structural changes or debugging time semantics. Use the runbook when something is broken and you need a practical triage checklist.
+
+- **Architecture:** See `docs/ARCHITECTURE.md`.
+- **Runbook:** See `docs/RUNBOOK.md`.
 
 ## Contributing / community
 

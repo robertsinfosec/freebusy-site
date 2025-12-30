@@ -60,6 +60,7 @@ export interface ErrorResponseDto {
   error:
     | 'forbidden_origin'
     | 'rate_limited'
+    | 'upstream_error'
     | 'upstream'
     | 'parse'
     | 'disabled'

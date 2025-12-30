@@ -1,7 +1,23 @@
 {
-    "name": "spark-template",
+    "name": "freebusy-site",
+    "description": "Frontend for a free/busy calendar viewer (Vite + React).",
     "private": true,
     "version": "0.0.0",
+    "license": "MIT",
+    "author": "robertsinfosec",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/robertsinfosec/freebusy-site.git",
+        "directory": "src"
+    },
+    "bugs": {
+        "url": "https://github.com/robertsinfosec/freebusy-site/issues"
+    },
+    "homepage": "https://github.com/robertsinfosec/freebusy-site#readme",
+    "engines": {
+        "node": ">=24 <25",
+        "npm": ">=10"
+    },
     "type": "module",
     "scripts": {
         "dev": "vite",

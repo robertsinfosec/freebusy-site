@@ -76,19 +76,49 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  const isSafeStyleValue = (value: string): boolean => {
+    // Prevent breaking out of the <style> tag (e.g. "</style><script>...")
+    // and avoid obviously unsafe characters.
+    return !/[<>]/.test(value)
+  }
+
+  const safeCssIdent = (value: string): string | null => {
+    // Constrain to a safe subset for CSS variable names.
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null
+    return trimmed
+  }
+
+  const escapedChartId = (() => {
+    if (!isSafeStyleValue(id)) return null
+    try {
+      return (globalThis as unknown as { CSS?: { escape?: (v: string) => string } }).CSS?.escape
+        ? (CSS.escape(id))
+        : id.replaceAll('"', '\\"')
+    } catch {
+      return id.replaceAll('"', '\\"')
+    }
+  })()
+
+  if (!escapedChartId) return null
+
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart="${escapedChartId}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
+    const safeKey = safeCssIdent(key)
+    if (!safeKey) return null
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    if (!color || !isSafeStyleValue(color)) return null
+    return `  --color-${safeKey}: ${color};`
   })
   .join("\n")}
 }

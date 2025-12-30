@@ -44,6 +44,16 @@ describe('freebusy-utils', () => {
     expect(res).toEqual({ kind: 'unavailable', message: FREEBUSY_UNAVAILABLE_MESSAGE })
   })
 
+  it('interprets 502 upstream_error as unavailable', () => {
+    const res = interpretFreeBusyHttpResult({
+      status: 502,
+      ok: false,
+      body: { error: 'upstream_error' }
+    })
+
+    expect(res).toEqual({ kind: 'unavailable', message: FREEBUSY_UNAVAILABLE_MESSAGE })
+  })
+
   it('interprets 429 as unavailable', () => {
     const res = interpretFreeBusyHttpResult({
       status: 429,

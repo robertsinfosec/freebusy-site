@@ -114,6 +114,19 @@ export function useFreeBusy() {
       }
 
       const data = body as FreeBusyResponseDto
+
+      // If the API returns a 2xx but the payload is malformed, fail closed into the
+      // normal "unavailable" UI state rather than rendering empty weeks.
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid FreeBusy payload')
+      }
+      if (!data.calendar || typeof data.calendar.timeZone !== 'string') {
+        throw new Error('Invalid FreeBusy payload (calendar.timeZone)')
+      }
+      if (!data.window || typeof data.window.startDate !== 'string' || typeof data.window.endDateInclusive !== 'string') {
+        throw new Error('Invalid FreeBusy payload (window)')
+      }
+
       const ownerTimeZone = data.calendar?.timeZone ?? null
       const weekStartDay = data.calendar?.weekStartDay ?? null
       const ownerDays = ownerTimeZone

@@ -4,11 +4,17 @@ import {
   formatTime,
   getTimeZoneParts,
   formatTimeRangeInTimeZone,
-  makeDateInTimeZone,
   formatDateHeaderInTimeZone
 } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
-import { getOwnerDayBusyIntervalRenderInfos, getHourSlots } from '@/components/calendar-grid-utils'
+import {
+  buildScheduleByIsoWeekday,
+  buildViewWorkIntervalsByOwnerDayIndex,
+  getHourCellAvailability,
+  getOwnerDayBusyIntervalRenderInfos,
+  getHourSlots,
+  getWorkHourBoundsInViewTimeZone
+} from '@/components/calendar-grid-utils'
 // tooltip removed in favor of native title
 
 interface CalendarGridProps {
@@ -48,21 +54,7 @@ export function CalendarGrid({
   const DEFAULT_VIEW_END = 18
   const CELL_HEIGHT = 48
 
-  const scheduleByIsoWeekday = useMemo(() => {
-    const map = new Map<number, { startMin: number; endMin: number }>()
-    if (!workingHoursWeekly) return map
-
-    for (const rule of workingHoursWeekly) {
-      const [sh, sm] = rule.start.split(':').map(Number)
-      const [eh, em] = rule.end.split(':').map(Number)
-      if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) continue
-      const startMin = sh * 60 + sm
-      const endMin = eh * 60 + em
-      map.set(rule.dayOfWeek, { startMin, endMin })
-    }
-
-    return map
-  }, [workingHoursWeekly])
+  const scheduleByIsoWeekday = useMemo(() => buildScheduleByIsoWeekday(workingHoursWeekly), [workingHoursWeekly])
 
   const hasWorkingHours = scheduleByIsoWeekday.size > 0
 
@@ -72,85 +64,26 @@ export function CalendarGrid({
   }, [ownerDays])
 
   const viewWorkIntervalsByDayIdx = useMemo(() => {
-    // Working hours mapped into the *viewer* timezone, represented as minutes-of-day.
-    // Note: if a rule maps across midnight in the viewer TZ, we extend endMin past 1440.
-    return ownerDays.map((day) => {
-      if (!hasWorkingHours) {
-        return { startMin: DEFAULT_VIEW_START * 60, endMin: DEFAULT_VIEW_END * 60 }
-      }
-
-      const rule = scheduleByIsoWeekday.get(day.dayOfWeek)
-      if (!rule) return null
-
-      const ymd = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(day.ownerDate)
-      if (!ymd) return null
-      const year = Number(ymd[1])
-      const month = Number(ymd[2])
-      const dom = Number(ymd[3])
-
-      const startHour = Math.floor(rule.startMin / 60)
-      const startMinute = rule.startMin % 60
-      const endHour = Math.floor(rule.endMin / 60)
-      const endMinute = rule.endMin % 60
-
-      const ownerStartInstant = makeDateInTimeZone({ year, month, day: dom, hour: startHour, minute: startMinute, second: 0 }, ownerTimeZone)
-      const ownerEndInstant = makeDateInTimeZone({ year, month, day: dom, hour: endHour, minute: endMinute, second: 0 }, ownerTimeZone)
-
-      const viewStart = getTimeZoneParts(ownerStartInstant, viewTimeZone)
-      const viewEnd = getTimeZoneParts(ownerEndInstant, viewTimeZone)
-
-      const viewStartMin = viewStart.hour * 60 + viewStart.minute
-      let viewEndMin = viewEnd.hour * 60 + viewEnd.minute
-      if (viewEndMin <= viewStartMin) viewEndMin += 24 * 60
-
-      return { startMin: viewStartMin, endMin: viewEndMin }
+    return buildViewWorkIntervalsByOwnerDayIndex({
+      ownerDays,
+      scheduleByIsoWeekday,
+      ownerTimeZone,
+      viewTimeZone,
+      defaultViewStartHour: DEFAULT_VIEW_START,
+      defaultViewEndHour: DEFAULT_VIEW_END
     })
-  }, [DEFAULT_VIEW_END, DEFAULT_VIEW_START, hasWorkingHours, ownerDays, ownerTimeZone, scheduleByIsoWeekday, viewTimeZone])
+  }, [DEFAULT_VIEW_END, DEFAULT_VIEW_START, ownerDays, ownerTimeZone, scheduleByIsoWeekday, viewTimeZone])
 
   const { workStartHour, workEndHour } = useMemo(() => {
-    let minMinute = DEFAULT_VIEW_START * 60
-    let maxMinute = DEFAULT_VIEW_END * 60
-
-    if (hasWorkingHours) {
-      for (const day of ownerDays) {
-        const rule = scheduleByIsoWeekday.get(day.dayOfWeek)
-        if (!rule) continue
-
-        const ymd = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(day.ownerDate)
-        if (!ymd) continue
-        const year = Number(ymd[1])
-        const month = Number(ymd[2])
-        const dom = Number(ymd[3])
-
-        const startHour = Math.floor(rule.startMin / 60)
-        const startMinute = rule.startMin % 60
-        const endHour = Math.floor(rule.endMin / 60)
-        const endMinute = rule.endMin % 60
-
-        const ownerStartInstant = makeDateInTimeZone({ year, month, day: dom, hour: startHour, minute: startMinute, second: 0 }, ownerTimeZone)
-        const ownerEndInstant = makeDateInTimeZone({ year, month, day: dom, hour: endHour, minute: endMinute, second: 0 }, ownerTimeZone)
-
-        const viewStart = getTimeZoneParts(ownerStartInstant, viewTimeZone)
-        const viewEnd = getTimeZoneParts(ownerEndInstant, viewTimeZone)
-
-        const viewStartMin = viewStart.hour * 60 + viewStart.minute
-        let viewEndMin = viewEnd.hour * 60 + viewEnd.minute
-        if (viewEndMin <= viewStartMin) viewEndMin += 24 * 60
-
-        minMinute = Math.min(minMinute, viewStartMin)
-        maxMinute = Math.max(maxMinute, viewEndMin)
-      }
-    }
-
-    const start = Math.max(0, Math.floor(minMinute / 60))
-    const end = Math.min(24, Math.ceil(maxMinute / 60))
-
-    if (end <= start) {
-      return { workStartHour: DEFAULT_VIEW_START, workEndHour: DEFAULT_VIEW_END }
-    }
-
-    return { workStartHour: start, workEndHour: end }
-  }, [hasWorkingHours, ownerDays, ownerTimeZone, scheduleByIsoWeekday, viewTimeZone])
+    return getWorkHourBoundsInViewTimeZone({
+      ownerDays,
+      scheduleByIsoWeekday,
+      ownerTimeZone,
+      viewTimeZone,
+      defaultViewStartHour: DEFAULT_VIEW_START,
+      defaultViewEndHour: DEFAULT_VIEW_END
+    })
+  }, [ownerDays, ownerTimeZone, scheduleByIsoWeekday, viewTimeZone])
 
   const hours = useMemo(() => getHourSlots(workStartHour, workEndHour), [workEndHour, workStartHour])
 
@@ -205,23 +138,11 @@ export function CalendarGrid({
                 const isTodayColumn = day.ownerDate === todayOwnerDate
                 const inWindow = day.inWindow !== false
 
-                const availability = (() => {
-                  if (!inWindow) return { kind: 'none' as const }
-                  const interval = viewWorkIntervalsByDayIdx[dayIdx]
-                  if (!interval) return { kind: 'none' as const }
-
-                  const cellStartMin = hour * 60
-                  const cellEndMin = cellStartMin + 60
-                  const overlapStart = Math.max(cellStartMin, interval.startMin)
-                  const overlapEnd = Math.min(cellEndMin, interval.endMin)
-
-                  if (overlapEnd <= overlapStart) return { kind: 'none' as const }
-                  if (overlapStart <= cellStartMin && overlapEnd >= cellEndMin) return { kind: 'full' as const }
-
-                  const topPct = ((overlapStart - cellStartMin) / 60) * 100
-                  const heightPct = ((overlapEnd - overlapStart) / 60) * 100
-                  return { kind: 'partial' as const, topPct, heightPct }
-                })()
+                const availability = getHourCellAvailability({
+                  inWindow,
+                  interval: viewWorkIntervalsByDayIdx[dayIdx],
+                  hour
+                })
 
                 const isFirstHour = hour === workStartHour
                 const dayBlocks = isFirstHour

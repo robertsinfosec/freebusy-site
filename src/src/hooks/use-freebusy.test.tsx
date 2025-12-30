@@ -102,9 +102,9 @@ describe('useFreeBusy', () => {
 
   it('sets unavailableMessage when API returns 503 (non-disabled)', async () => {
     mockFetchOnce({
-      status: 503,
+      status: 502,
       ok: false,
-      body: { error: 'upstream' }
+      body: { error: 'upstream_error' }
     })
 
     const { result, unmount } = renderHook(() => useFreeBusy())
@@ -214,10 +214,72 @@ describe('useFreeBusy', () => {
       expect(result.current.loading).toBe(false)
     })
 
-    expect(result.current.unavailableMessage).toBeNull()
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
     expect(result.current.ownerTimeZone).toBeNull()
     expect(result.current.ownerDays).toEqual([])
-    expect(result.current.ownerWeeks).toEqual([[]])
+    expect(result.current.ownerWeeks).toEqual([])
+
+    unmount()
+  })
+
+  it('treats a 200 response with calendar but missing window as unavailable', async () => {
+    mockFetchOnce({
+      status: 200,
+      ok: true,
+      body: {
+        version: '25.1227.1200',
+        generatedAtUtc: '2025-12-27T12:00:00.000Z',
+        calendar: { timeZone: 'Etc/UTC', weekStartDay: 1 }
+      }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.disabledMessage).toBeNull()
+    expect(result.current.busy).toHaveLength(0)
+
+    unmount()
+  })
+
+  it('treats 403 forbidden_origin as unavailable', async () => {
+    mockFetchOnce({
+      status: 403,
+      ok: false,
+      body: { error: 'forbidden_origin' }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.disabledMessage).toBeNull()
+
+    unmount()
+  })
+
+  it('treats 404 not_found as unavailable', async () => {
+    mockFetchOnce({
+      status: 404,
+      ok: false,
+      body: { error: 'not_found' }
+    })
+
+    const { result, unmount } = renderHook(() => useFreeBusy())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.unavailableMessage).toMatch(/problem getting availability/i)
+    expect(result.current.disabledMessage).toBeNull()
 
     unmount()
   })
