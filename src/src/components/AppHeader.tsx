@@ -16,7 +16,6 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({
-  loading,
   timeZone,
   onTimeZoneChange,
   calendarTimeZone,
@@ -26,8 +25,6 @@ export function AppHeader({
   const viewingTimeZone = timeZone ?? calendarTimeZone
 
   const viewLabel = viewingTimeZone ? labelForUsTimeZone(viewingTimeZone) : '—'
-  const calendarLabel = calendarTimeZone ? labelForUsTimeZone(calendarTimeZone) : '—'
-
 
   return (
     <div className="mb-8">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { Monitor, Moon, SunDim } from '@phosphor-icons/react'
 
@@ -8,14 +8,9 @@ type ThemeMode = 'system' | 'light' | 'dark'
 
 export function ThemeToggle() {
   const { theme, systemTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
+    if (typeof document === 'undefined') return
 
     const root = document.documentElement
     const resolved = theme === 'system'
@@ -30,27 +25,13 @@ export function ThemeToggle() {
       root.classList.add('light')
       root.dataset.theme = 'light'
     }
-  }, [theme, systemTheme, mounted])
+  }, [theme, systemTheme])
 
   const cycleTheme = () => {
     const order: ThemeMode[] = ['system', 'light', 'dark']
     const current: ThemeMode = (theme === 'light' || theme === 'dark' || theme === 'system') ? theme : 'system'
     const next = order[(order.indexOf(current) + 1) % order.length]
     setTheme(next)
-  }
-
-  if (!mounted) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-10 w-10"
-        aria-label="Toggle theme"
-        disabled
-      >
-        <Monitor size={18} />
-      </Button>
-    )
   }
 
   const icon = theme === 'system'

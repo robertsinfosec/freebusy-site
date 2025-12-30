@@ -47,7 +47,8 @@ function App() {
 
   useEffect(() => {
     if (!userHasChosenTimeZoneRef.current && calendarTimeZone) {
-      setViewTimeZone(calendarTimeZone)
+      const id = globalThis.setTimeout(() => setViewTimeZone(calendarTimeZone), 0)
+      return () => globalThis.clearTimeout(id)
     }
   }, [calendarTimeZone])
 
@@ -60,6 +61,20 @@ function App() {
     if (!ownerTimeZone) return false
     return ownerWeeks.flat().length > 0
   }, [disabledMessage, loading, ownerTimeZone, ownerWeeks, unavailableMessage])
+
+  const [availabilityExportGeneratedAtUtcMs, setAvailabilityExportGeneratedAtUtcMs] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (loading) return
+    if (disabledMessage || unavailableMessage) return
+    if (!ownerTimeZone) return
+
+    const allOwnerDays = ownerWeeks.flat()
+    if (allOwnerDays.length === 0) return
+
+    const id = globalThis.setTimeout(() => setAvailabilityExportGeneratedAtUtcMs(Date.now()), 0)
+    return () => globalThis.clearTimeout(id)
+  }, [disabledMessage, loading, ownerTimeZone, ownerWeeks, unavailableMessage, renderTimeZone, busy, workingHours?.weekly, window])
 
   const availabilityExportText = useMemo(() => {
     if (loading) return null
@@ -76,9 +91,9 @@ function App() {
       ownerTimeZone,
       viewTimeZone: renderTimeZone,
       window,
-      generatedAtUtcMs: Date.now()
+      generatedAtUtcMs: availabilityExportGeneratedAtUtcMs
     })
-  }, [busy, disabledMessage, loading, ownerTimeZone, ownerWeeks, renderTimeZone, unavailableMessage, workingHours?.weekly, window])
+  }, [availabilityExportGeneratedAtUtcMs, busy, disabledMessage, loading, ownerTimeZone, ownerWeeks, renderTimeZone, unavailableMessage, workingHours?.weekly, window])
 
   const availabilityExportFileName = useMemo(() => {
     if (!availabilityExportText) return null

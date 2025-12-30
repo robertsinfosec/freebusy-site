@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml/badge.svg)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml/badge.svg)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml)
-![node](https://img.shields.io/github/package-json/engines/node/robertsinfosec/freebusy-site?filename=src/package.json)
+![node](https://img.shields.io/github/package-json/engines/node/robertsinfosec/freebusy-site?filename=src%2Fpackage.json)
 ![tests](badges/tests.svg)
 ![coverage](badges/coverage.svg)
 [![Dependabot](https://img.shields.io/github/dependabot/updates/robertsinfosec/freebusy-site?label=dependabot)](https://github.com/robertsinfosec/freebusy-site/security/dependabot)

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowClockwise, CalendarX, CaretDown, CopySimple, DotsThreeVertical, DownloadSimple, Warning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -62,9 +62,28 @@ export function AvailabilityCard({
 
   const exportDisabled = !availabilityExportText
 
-  const now = Date.now()
   const disabledUntilMs = refreshDisabledUntil ? new Date(refreshDisabledUntil).getTime() : null
-  const rateLimited = disabledUntilMs !== null && Number.isFinite(disabledUntilMs) && disabledUntilMs > now
+  const [rateLimited, setRateLimited] = useState(() => disabledUntilMs !== null)
+
+  useEffect(() => {
+    if (disabledUntilMs === null || !Number.isFinite(disabledUntilMs)) {
+      const id = globalThis.setTimeout(() => setRateLimited(false), 0)
+      return () => globalThis.clearTimeout(id)
+    }
+
+    const update = () => {
+      setRateLimited(disabledUntilMs > Date.now())
+    }
+
+    const immediateId = globalThis.setTimeout(update, 0)
+    const remainingMs = disabledUntilMs - Date.now()
+    const timeoutMs = Math.max(0, Math.min(remainingMs + 50, 2_000_000_000))
+    const id = globalThis.setTimeout(update, timeoutMs)
+    return () => {
+      globalThis.clearTimeout(immediateId)
+      globalThis.clearTimeout(id)
+    }
+  }, [disabledUntilMs])
   const refreshTitle = rateLimited && disabledUntilMs
     ? `Rate limited until ${new Date(disabledUntilMs).toLocaleTimeString('en-US', { timeZone: viewTimeZone })}`
     : 'Refresh'
