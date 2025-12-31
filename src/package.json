@@ -32,7 +32,6 @@
         "test:ui": "vitest --ui",
         "pretest:coverage": "node scripts/generate-version.mjs",
         "test:coverage": "node scripts/run-tests.mjs --coverage",
-        "badge:coverage": "node scripts/generate-badges.mjs",
         "optimize": "vite optimize",
         "preview": "vite preview"
     },
@@ -118,7 +117,9 @@
         "typescript": "~5.9.3",
         "typescript-eslint": "^8.51.0",
         "vite": "^7.3.0",
-        "badge-maker": "^5.0.2",
         "vitest": "^4.0.16"
+    },
+    "overrides": {
+        "qs": "^6.14.1"
     }
 }

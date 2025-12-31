@@ -27,9 +27,7 @@ Environment:
 
 ## Tests and coverage
 
-This section explains the test workflow and how coverage artifacts are produced. The repo wraps Vitest so running tests also updates committed badges. Run these commands before submitting changes that affect behavior.
-
-This repo wraps Vitest so running tests also updates committed badges.
+This section explains the test workflow and how coverage artifacts are produced. Run these commands before submitting changes that affect behavior.
 
 ```bash
 cd src

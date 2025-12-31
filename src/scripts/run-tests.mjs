@@ -27,18 +27,10 @@ async function main() {
   const { coverage } = parseArgs(process.argv.slice(2))
 
   const vitestArgs = coverage
-    ? ['run', '--coverage', '--coverage.reporter=html', '--coverage.reporter=text', '--coverage.reporter=json-summary']
+    ? ['run', '--coverage', '--coverage.reporter=html', '--coverage.reporter=text', '--coverage.reporter=json-summary', '--coverage.reporter=lcov']
     : ['run']
 
   const vitestExitCode = await run('vitest', vitestArgs)
-
-  const testsStatus = vitestExitCode === 0 ? 'passing' : 'failing'
-  const badgeArgs = coverage
-    ? [`--testsStatus=${testsStatus}`]
-    : [`--testsStatus=${testsStatus}`, '--skip-coverage']
-
-  // Always attempt to update badges (even if tests failed).
-  await run(process.execPath, ['scripts/generate-badges.mjs', ...badgeArgs])
 
   process.exit(vitestExitCode)
 }

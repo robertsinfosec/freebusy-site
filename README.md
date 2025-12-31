@@ -1,11 +1,11 @@
 # robertsinfosec Free/Busy Calendar
 
-[![CI](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml/badge.svg)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml/badge.svg)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml)
-![node](https://img.shields.io/github/package-json/engines/node/robertsinfosec/freebusy-site?filename=src%2Fpackage.json)
-![tests](badges/tests.svg)
-![coverage](badges/coverage.svg)
-[![Dependabot](https://img.shields.io/github/dependabot/updates/robertsinfosec/freebusy-site?label=dependabot)](https://github.com/robertsinfosec/freebusy-site/security/dependabot)
+[![CI](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/codeql.yml)
+![node](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Frobertsinfosec%2Ffreebusy-site%2Fmain%2Fsrc%2Fpackage.json&query=%24.engines.node&label=node&color=brightgreen)
+![tests](https://img.shields.io/github/actions/workflow/status/robertsinfosec/freebusy-site/ci.yml?branch=main&label=tests)
+![coverage](https://img.shields.io/codecov/c/github/robertsinfosec/freebusy-site?branch=main)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/robertsinfosec/freebusy-site/security/dependabot)
 
 A professional free/busy calendar viewer.
 
@@ -50,9 +50,9 @@ Environment:
 
 ## Testing
 
-This section describes how tests run in this repo and why they matter for CI hygiene. The test wrapper also updates committed badges. If you change logic, run tests locally before opening a PR.
+This section describes how tests run in this repo and why they matter for CI hygiene. If you change logic, run tests locally before opening a PR.
 
-This repo wraps Vitest so test runs also update committed badges.
+This repo uses Vitest.
 
 ```bash
 cd src
@@ -62,7 +62,6 @@ npm run test:coverage
 
 Notes:
 
-- **Badges:** Committed in `badges/` at the repo root.
 - **Coverage output:** Emitted to `src/coverage/`.
 
 ## Deployment (Cloudflare Pages)

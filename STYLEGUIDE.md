@@ -36,7 +36,7 @@ This section sets expectations for styling changes and keeps the UI consistent w
 
 ## Testing
 
-This section documents the expected level of test coverage for changes. The repository’s test wrapper also updates committed badges, so keeping tests green matters for CI hygiene. When adding new behavior, add a unit test close to the helper or hook where the logic lives.
+This section documents the expected level of test coverage for changes. Keeping tests green matters for CI hygiene. When adding new behavior, add a unit test close to the helper or hook where the logic lives.
 
 - **Framework:** Unit tests use Vitest + Testing Library.
 - **Focus:** Prefer testing pure helpers (date math, clipping, formatting) over deeply testing Radix internals.

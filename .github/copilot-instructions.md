@@ -42,12 +42,11 @@ Testing is intentionally wrapped to update badges:
 
 ```bash
 cd src
-npm test            # runs vitest via scripts/run-tests.mjs and updates badges/tests.svg
-npm run test:coverage # also produces HTML in src/coverage/ and updates badges/coverage.svg
+npm test            # runs vitest via scripts/run-tests.mjs
+npm run test:coverage # also produces HTML in src/coverage/
 ```
 ### Notes
 
-- Badges live at repo root: `badges/coverage.svg`, `badges/tests.svg` (and are committed).
 - Coverage output is generated under `src/coverage/`.
 
 ## Generated files (don’t hand-edit)
