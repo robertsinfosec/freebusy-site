@@ -128,8 +128,7 @@ web_modules/
 .stylelintcache
 
 # Build-generated version artifacts
-version.txt
-public/version.txt
+src/public/version.txt
 src/version.generated.ts
 
 # Microbundle cache

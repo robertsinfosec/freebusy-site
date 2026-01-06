@@ -54,7 +54,6 @@ npm run test:coverage # also produces HTML in src/coverage/
 - Version stamping runs automatically via `predev`/`prebuild`/`pretest`:
   - `src/src/version.generated.ts`
   - `src/public/version.txt`
-  - `src/version.txt`
 
 ## UI / styling conventions
 
