@@ -110,3 +110,7 @@ This section summarizes the preferred channels for product feedback and vulnerab
 ## License
 
 MIT — see `LICENSE`.
+
+---
+
+![Alt](https://repobeats.axiom.co/api/embed/75f1f04fdd7e3bf2cc578d46a0d764ca3037ed35.svg "Repobeats analytics image")
