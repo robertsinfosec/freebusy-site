@@ -33,6 +33,11 @@
 
 set -euo pipefail
 
+# Enable debug mode if DEBUG env var is set
+if [[ "${DEBUG:-}" == "1" ]]; then
+    set -x
+fi
+
 # Configuration
 MAIN_BRANCH="main"
 TEST_DIR="src"
@@ -203,6 +208,12 @@ declare -a skipped_prs=()
 
 # Process each PR
 while IFS='|' read -r pr_num branch title; do
+    # Skip empty lines
+    if [[ -z "$pr_num" || -z "$branch" ]]; then
+        log_warning "Skipping empty line in PR data"
+        continue
+    fi
+    
     echo ""
     echo "=========================================="
     log_info "Processing PR #$pr_num: $title"
@@ -269,7 +280,8 @@ while IFS='|' read -r pr_num branch title; do
                     ((skipped_count++))
                     
                     # Clean up local branch
-                    git branch -D "$branch" >/dev/null 2>&1
+                    skipped_prs+=("PR #$pr_num: $title (user declined)")
+                    git branch -D "$branch" >/dev/null 2>&1 || true
                     continue
                 fi
             fi
@@ -291,9 +303,10 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
                     
                     # Clean up local branch
                     log_info "Cleaning up local branch: $branch"
-                    git branch -d "$branch" >/dev/null 2>&1
+                    git branch -d "$branch" >/dev/null 2>&1 || true
                     
                     ((merged_count++))
+                    log_info "Successfully completed PR #$pr_num"
                 else
                     log_error "Failed to push to remote"
                     failed_prs+=("PR #$pr_num: $title (push failed)")
@@ -317,7 +330,7 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
         git checkout "$MAIN_BRANCH" --quiet
         
         # Clean up local branch
-        git branch -D "$branch" >/dev/null 2>&1
+        git branch -D "$branch" >/dev/null 2>&1 || true
         
         ((failed_count++))
         # Don't exit - continue processing other PRs
@@ -325,12 +338,13 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
     
     # Separator between PRs
     echo ""
-    log_info "Moving to next PR..."
+    log_info "Completed processing PR #$pr_num. Moving to next PR..."
     echo ""
     
 done <<< "$pr_data"
 
 log_info "Finished processing all PRs"
+echo ""
 
 # Summary
 echo ""
