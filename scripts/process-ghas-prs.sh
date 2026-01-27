@@ -255,7 +255,7 @@ while IFS='|' read -r pr_num branch title; do
                 
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                 echo ""
-                read -p "Merge this PR? (y/N): " -r
+                read -p "Merge this PR? (y/N): " -r </dev/tty
                 echo ""
                 
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
