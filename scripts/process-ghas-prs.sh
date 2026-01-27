@@ -13,11 +13,13 @@
 #   --dry-run              Show what would be done without actually merging
 #   --author AUTHOR        Only process PRs from AUTHOR (can be used multiple times)
 #   --all                  Process all automated authors (default)
+#   --force                Skip confirmation prompts and auto-merge all passing PRs
 #
 # Examples:
 #   ./scripts/process-ghas-prs.sh --dry-run
 #   ./scripts/process-ghas-prs.sh --author dependabot
 #   ./scripts/process-ghas-prs.sh --author dependabot --author copilot-autofix
+#   ./scripts/process-ghas-prs.sh --force  # Auto-merge without prompts
 #
 # First-time setup:
 #   gh auth login
@@ -36,6 +38,7 @@ MAIN_BRANCH="main"
 TEST_DIR="src"
 TEST_COMMAND="npm test"
 DRY_RUN=false
+FORCE=false
 
 # Automated PR authors to process
 # These are the GitHub app/bot usernames
@@ -69,6 +72,10 @@ while [[ $# -gt 0 ]]; do
             # Use default authors (already set)
             shift
             ;;
+        --force)
+            FORCE=true
+            shift
+            ;;
         -h|--help)
             grep '^#' "$0" | grep -v '#!/bin/bash' | sed 's/^# //' | sed 's/^#//'
             exit 0
@@ -88,6 +95,10 @@ fi
 
 if [[ "$DRY_RUN" == true ]]; then
     echo -e "${YELLOW}DRY RUN MODE - No changes will be made${NC}\n"
+fi
+
+if [[ "$FORCE" == true ]]; then
+    echo -e "${YELLOW}FORCE MODE - All passing PRs will be merged without confirmation${NC}\n"
 fi
 
 # Helper functions
@@ -182,6 +193,9 @@ echo ""
 merged_count=0
 failed_count=0
 skipped_count=0
+declare -a merged_prs=()
+declare -a failed_prs=()
+declare -a skipped_prs=()
 
 # Process each PR
 while IFS='|' read -r pr_num branch title; do
@@ -201,6 +215,7 @@ while IFS='|' read -r pr_num branch title; do
     log_info "Checking out PR #$pr_num branch: $branch"
     if ! git checkout -b "$branch" "origin/$branch" --quiet; then
         log_error "Failed to checkout branch: $branch"
+        skipped_prs+=("PR #$pr_num: $title (checkout failed)")
         ((skipped_count++))
         git checkout "$MAIN_BRANCH" --quiet
         continue
@@ -217,8 +232,42 @@ while IFS='|' read -r pr_num branch title; do
         
         if [[ "$DRY_RUN" == true ]]; then
             log_warning "[DRY RUN] Would merge PR #$pr_num: $branch into $MAIN_BRANCH"
+            merged_prs+=("PR #$pr_num: $title")
             ((merged_count++))
         else
+            # Show PR details and ask for confirmation (unless --force)
+            if [[ "$FORCE" == false ]]; then
+                echo ""
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo -e "${GREEN}✓ TESTS PASSED${NC}"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo -e "${BLUE}PR #$pr_num${NC}: $title"
+                echo -e "${BLUE}Branch${NC}: $branch"
+                echo ""
+                
+                # Get PR body/description if available
+                pr_body=$(gh pr view "$pr_num" --json body --jq '.body' 2>/dev/null || echo "")
+                if [[ -n "$pr_body" ]]; then
+                    echo -e "${BLUE}Description:${NC}"
+                    echo "$pr_body" | head -n 10
+                    echo ""
+                fi
+                
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                read -p "Merge this PR? [y/N] " -n 1 -r
+                echo ""
+                
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    log_warning "Skipped PR #$pr_num (user declined)"
+                    skipped_prs+=("PR #$pr_num: $title (user declined)")
+                    ((skipped_count++))
+                    
+                    # Clean up local branch
+                    git branch -D "$branch" >/dev/null 2>&1
+                    continue
+                fi
+            fi
+            
             # Merge the branch
             log_info "Merging PR #$pr_num: $branch into $MAIN_BRANCH"
             if git merge --no-ff "$branch" -m "Merge pull request #$pr_num from $branch
@@ -232,6 +281,7 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
                 log_info "Pushing to remote..."
                 if git push origin "$MAIN_BRANCH"; then
                     log_success "Pushed to remote - PR #$pr_num auto-closed"
+                    merged_prs+=("PR #$pr_num: $title")
                     
                     # Clean up local branch
                     log_info "Cleaning up local branch: $branch"
@@ -240,16 +290,21 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
                     ((merged_count++))
                 else
                     log_error "Failed to push to remote"
+                    failed_prs+=("PR #$pr_num: $title (push failed)")
                     ((failed_count++))
+                    # Don't exit - continue processing other PRs
                 fi
             else
                 log_error "Merge failed for PR #$pr_num"
+                failed_prs+=("PR #$pr_num: $title (merge conflict)")
                 git merge --abort 2>/dev/null || true
                 ((failed_count++))
+                # Don't exit - continue processing other PRs
             fi
         fi
     else
         log_error "Tests failed for PR #$pr_num"
+        failed_prs+=("PR #$pr_num: $title (tests failed)")
         
         # Switch back to main
         log_info "Switching back to $MAIN_BRANCH"
@@ -259,19 +314,51 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
         git branch -D "$branch" >/dev/null 2>&1
         
         ((failed_count++))
+        # Don't exit - continue processing other PRs
     fi
+    
+    # Separator between PRs
+    echo ""
     
 done <<< "$pr_data"
 
 # Summary
 echo ""
 echo "=========================================="
-echo "SUMMARY"
+echo "               SUMMARY"
 echo "=========================================="
+echo ""
 log_info "Total PRs processed: $pr_count"
+echo ""
 log_success "Successfully merged: $merged_count"
 log_error "Failed tests or merge: $failed_count"
 log_warning "Skipped: $skipped_count"
+echo ""
+
+# Show detailed results
+if [[ ${#merged_prs[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${GREEN}✓ Merged PRs:${NC}"
+    for pr in "${merged_prs[@]}"; do
+        echo "  - $pr"
+    done
+fi
+
+if [[ ${#failed_prs[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${RED}✗ Failed PRs:${NC}"
+    for pr in "${failed_prs[@]}"; do
+        echo "  - $pr"
+    done
+fi
+
+if [[ ${#skipped_prs[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${YELLOW}⊘ Skipped PRs:${NC}"
+    for pr in "${skipped_prs[@]}"; do
+        echo "  - $pr"
+    done
+fi
 
 if [[ "$DRY_RUN" == true ]]; then
     echo ""
