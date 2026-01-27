@@ -231,7 +231,7 @@ while IFS='|' read -r pr_num branch title; do
     if ! git checkout -b "$branch" "origin/$branch" --quiet; then
         log_error "Failed to checkout branch: $branch"
         skipped_prs+=("PR #$pr_num: $title (checkout failed)")
-        ((skipped_count++))
+        skipped_count=$((skipped_count + 1))
         git checkout "$MAIN_BRANCH" --quiet
         continue
     fi
@@ -248,7 +248,7 @@ while IFS='|' read -r pr_num branch title; do
         if [[ "$DRY_RUN" == true ]]; then
             log_warning "[DRY RUN] Would merge PR #$pr_num: $branch into $MAIN_BRANCH"
             merged_prs+=("PR #$pr_num: $title")
-            ((merged_count++))
+            merged_count=$((merged_count + 1))
         else
             # Show PR details and ask for confirmation (unless --force)
             if [[ "$FORCE" == false ]]; then
@@ -277,10 +277,9 @@ while IFS='|' read -r pr_num branch title; do
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     log_warning "Skipped PR #$pr_num (user declined)"
                     skipped_prs+=("PR #$pr_num: $title (user declined)")
-                    ((skipped_count++))
+                    skipped_count=$((skipped_count + 1))
                     
                     # Clean up local branch
-                    skipped_prs+=("PR #$pr_num: $title (user declined)")
                     git branch -D "$branch" >/dev/null 2>&1 || true
                     continue
                 fi
@@ -305,19 +304,19 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
                     log_info "Cleaning up local branch: $branch"
                     git branch -d "$branch" >/dev/null 2>&1 || true
                     
-                    ((merged_count++))
+                    merged_count=$((merged_count + 1))
                     log_info "Successfully completed PR #$pr_num"
                 else
                     log_error "Failed to push to remote"
                     failed_prs+=("PR #$pr_num: $title (push failed)")
-                    ((failed_count++))
+                    failed_count=$((failed_count + 1))
                     # Don't exit - continue processing other PRs
                 fi
             else
                 log_error "Merge failed for PR #$pr_num"
                 failed_prs+=("PR #$pr_num: $title (merge conflict)")
                 git merge --abort 2>/dev/null || true
-                ((failed_count++))
+                failed_count=$((failed_count + 1))
                 # Don't exit - continue processing other PRs
             fi
         fi
@@ -332,7 +331,7 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
         # Clean up local branch
         git branch -D "$branch" >/dev/null 2>&1 || true
         
-        ((failed_count++))
+        failed_count=$((failed_count + 1))
         # Don't exit - continue processing other PRs
     fi
     
