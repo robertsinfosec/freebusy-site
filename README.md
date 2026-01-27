@@ -1,5 +1,9 @@
 # Free/Busy Calendar Viewer
 
+A professional free/busy calendar viewer for sharing your availability.
+
+This is the **frontend** for displaying calendar availability. It connects to the [Freebusy API](https://github.com/robertsinfosec/freebusy-api) backend, which normalizes a private iCalendar feed into a minimal JSON payload safe for public display.
+
 [![CI](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/robertsinfosec/freebusy-site/ci.yml?branch=main&label=tests&logo=githubactions&logoColor=white)](https://github.com/robertsinfosec/freebusy-site/actions/workflows/ci.yml)
 [![coverage](https://codecov.io/gh/robertsinfosec/freebusy-site/branch/main/graph/badge.svg)](https://codecov.io/gh/robertsinfosec/freebusy-site)
@@ -13,9 +17,7 @@
 [![PRs](https://img.shields.io/github/issues-pr/robertsinfosec/freebusy-site?label=pull%20requests)](https://github.com/robertsinfosec/freebusy-site/pulls)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot&logoColor=white)](https://github.com/robertsinfosec/freebusy-site/security/dependabot)
 
-A professional free/busy calendar viewer for sharing your availability.
-
-This is the **frontend** for displaying calendar availability. It connects to the [Freebusy API](https://github.com/robertsinfosec/freebusy-api) backend, which normalizes a private iCalendar feed into a minimal JSON payload safe for public display.
+<img src="docs/images/freebusy-social-fe.png" height="200"/>
 
 ## Features
 
