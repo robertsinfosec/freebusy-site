@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v26.127.1400] - 2026-01-27
+
+### Changed
+
+- Removed generated version file and updated version fetching in App component
+- Updated container name and forwardPorts in devcontainer configuration
+
+### Fixed
+
+- Improved user prompt and input handling for merging PRs in process-ghas-prs.sh
+- Enhanced PR processing script with debug mode and empty line handling
+- Updated increment syntax for skipped, merged, and failed counts in PR processing script
+
+## [v26.127.1804] - 2026-01-27
 
 ### Added
 
@@ -15,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Testing guide (TESTING.md) with Vitest best practices and coverage tracking
   - Deployment guide (DEPLOYMENT.md) for Cloudflare Pages operations
   - Codecov setup guide (CODECOV.md) for code coverage tracking
+- Comprehensive changelog with detailed documentation updates
+- Script to automate processing of GitHub Advanced Security PRs (`scripts/process-ghas-prs.sh`)
+  - Added --force option for auto-merging PRs
+  - Enhanced with logging and improved description formatting
+  - Debug mode and empty line handling
 - Repobeats analytics image to README
 
 ### Changed
@@ -28,6 +46,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Deleted `docs/RUNBOOK.md` after consolidating content into SETUP/TESTING/DEPLOYMENT guides
+- Removed obsolete BUILD_VERSION declaration
+
+### Dependencies
+
+- Bumped `framer-motion` from 12.24.0 to 12.24.10
+- Bumped `vite` from 7.3.0 to 7.3.1 (dev)
+- Bumped `react-resizable-panels` from 4.2.1 to 4.3.0
+- Bumped `react-error-boundary` from 6.0.1 to 6.0.2
+- Bumped `react-hook-form` from 7.69.0 to 7.70.0
+
+## [v26.107.1902] - 2026-01-07
+
+### Dependencies
+
+- Bumped `framer-motion` from 12.24.0 to 12.24.10
+- Bumped `vite` from 7.3.0 to 7.3.1 (dev)
+- Bumped `react-resizable-panels` from 4.2.1 to 4.3.0
 
 ## [v26.106.1245] - 2026-01-06
 
@@ -168,7 +203,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed timezone/DST handling in timeslots
 - Labeled busy blocks as "Busy"
 
-[Unreleased]: https://github.com/robertsinfosec/freebusy-site/compare/v26.106.1245...HEAD
+[v26.127.1934]: https://github.com/robertsinfosec/freebusy-site/compare/v26.127.1804...v26.127.1934
+[v26.127.1804]: https://github.com/robertsinfosec/freebusy-site/compare/v26.107.1902...v26.127.1804
+[v26.107.1902]: https://github.com/robertsinfosec/freebusy-site/compare/v26.106.1245...v26.107.1902
 [v26.106.1245]: https://github.com/robertsinfosec/freebusy-site/compare/v26.106.1010...v26.106.1245
 [v26.106.1010]: https://github.com/robertsinfosec/freebusy-site/compare/v25.1231.0111...v26.106.1010
 [v25.1231.0111]: https://github.com/robertsinfosec/freebusy-site/releases/tag/v25.1231.0111
+
