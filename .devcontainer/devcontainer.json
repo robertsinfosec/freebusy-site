@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/jekyll
 {
-	"name": "Cloudflare Workers",
+	"name": "freebusy-site (Cloudflare)",
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:22",
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {},
