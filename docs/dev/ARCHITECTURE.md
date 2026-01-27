@@ -1,4 +1,8 @@
-# Architecture
+# Architecture Guide
+
+> **Navigation:** [Home](../../README.md) | [Contributing](../../CONTRIBUTING.md) | [Setup](SETUP.md) | [Testing](TESTING.md) | [Style Guide](../../STYLE_GUIDE.md)
+
+Complete architectural overview of the freebusy-site frontend project.
 
 This document describes the architecture of the **freebusy-site** frontend. It explains how the UI is structured, how data flows from the Freebusy API to the calendar grid, and which modules own the key time and timezone semantics. Use this as a map when making changes, debugging issues, or onboarding new contributors.
 
@@ -75,3 +79,5 @@ This section documents how security communications are intended to work for the 
 - **Security policy:** `SECURITY.md`.
 - **Vulnerability reporting:** Prefer GitHub Security Advisories; email is an alternative.
 - **security.txt:** Published at `/.well-known/security.txt` from `src/public/.well-known/security.txt`.
+
+> **Navigation:** [Home](../../README.md) | [Contributing](../../CONTRIBUTING.md) | [Setup](SETUP.md) | [Testing](TESTING.md) | [Style Guide](../../STYLE_GUIDE.md)
