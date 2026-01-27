@@ -1,4 +1,4 @@
-# Free/Busy Calendar Viewer
+# freebusy-site
 
 A professional free/busy calendar viewer for sharing your availability.
 
