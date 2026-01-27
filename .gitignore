@@ -129,7 +129,6 @@ web_modules/
 
 # Build-generated version artifacts
 src/public/version.txt
-src/version.generated.ts
 
 # Microbundle cache
 .rpt2_cache/

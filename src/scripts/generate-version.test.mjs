@@ -40,26 +40,16 @@ describe("generate-version", () => {
   });
 
   it("persists the generated version into deployable assets", async () => {
-    // `pretest` runs the generator, so these should exist in normal runs.
+    // `pretest` runs the generator, so this file should exist in normal runs.
     const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
     const projectDir = path.resolve(scriptsDir, "..");
 
-    const generatedTs = path.join(projectDir, "src", "version.generated.ts");
     const publicVersion = path.join(projectDir, "public", "version.txt");
 
-    const [tsText, publicText] = await Promise.all([
-      fs.readFile(generatedTs, "utf8"),
-      fs.readFile(publicVersion, "utf8"),
-    ]);
-
-    const match = tsText.match(/BUILD_VERSION\s*=\s*"([^"]+)"/);
-    expect(match).not.toBeNull();
-    const tsVersion = match?.[1];
-
+    const publicText = await fs.readFile(publicVersion, "utf8");
     const publicVersionTrimmed = publicText.trim();
 
-    expect(tsVersion).toBeTruthy();
-    expect(publicVersionTrimmed).toBe(tsVersion);
+    expect(publicVersionTrimmed).toBeTruthy();
     expect(isValidVersion(publicVersionTrimmed)).toBe(true);
   });
 });

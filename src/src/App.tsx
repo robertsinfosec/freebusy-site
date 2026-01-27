@@ -7,12 +7,20 @@ import { useFreeBusy } from '@/hooks/use-freebusy'
 import { getStartOfDayInTimeZone } from '@/lib/date-utils'
 import { buildAvailabilityExportText } from '@/lib/availability-export'
 import { isSupportedUsTimeZone } from '@/lib/us-timezones'
-import { BUILD_VERSION } from '@/version.generated'
 
 const VIEW_TIMEZONE_STORAGE_KEY = 'freebusy.viewTimeZone'
 
 function App() {
   const { busy, loading, disabledMessage, unavailableMessage, refresh, refreshDisabledUntil, ownerTimeZone, apiVersion, ownerWeeks, weekStartDay, workingHours, window } = useFreeBusy()
+  
+  // Fetch build version from generated version.txt file
+  const [buildVersion, setBuildVersion] = useState<string>('...')
+  useEffect(() => {
+    fetch('/version.txt')
+      .then(r => r.text())
+      .then(v => setBuildVersion(v.trim()))
+      .catch(() => setBuildVersion('unknown'))
+  }, [])
 
   // Owner timezone is authoritative for the day columns.
   const ownerCalendarTimeZone = ownerTimeZone ?? null
@@ -152,7 +160,7 @@ function App() {
         )}
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Version {BUILD_VERSION}{apiVersion ? ` (API: ${apiVersion})` : ''}</p>
+          <p>Version {buildVersion}{apiVersion ? ` (API: ${apiVersion})` : ''}</p>
           <p>Calendar updates every 5 minutes · Last updated: {new Date().toLocaleTimeString('en-US')}</p>
         </div>
       </div>

@@ -61,7 +61,6 @@ async function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const projectDir = path.resolve(scriptDir, "..");
 
-  const generatedTs = path.join(projectDir, "src", "version.generated.ts");
   const publicVersionFile = path.join(projectDir, "public", "version.txt");
 
   const fallback = "0.0.0";
@@ -72,14 +71,11 @@ async function main() {
       throw new Error(`generated version did not validate: ${version}`);
     }
 
-    await safeWriteFile(generatedTs, `export const BUILD_VERSION = ${JSON.stringify(version)};\n`);
     await safeWriteFile(publicVersionFile, `${version}\n`);
 
-    console.info(`[version] wrote ${path.relative(projectDir, generatedTs)} export BUILD_VERSION`);
     console.info(`[version] wrote ${path.relative(projectDir, publicVersionFile)} = ${version}`);
   } catch (err) {
     console.warn("[version] failed to generate version; using fallback", err);
-    await safeWriteFile(generatedTs, `export const BUILD_VERSION = ${JSON.stringify(fallback)};\n`);
     await safeWriteFile(publicVersionFile, `${fallback}\n`);
   }
 }

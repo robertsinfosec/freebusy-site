@@ -52,8 +52,7 @@ npm run test:coverage # also produces HTML in src/coverage/
 ## Generated files (don’t hand-edit)
 
 - Version stamping runs automatically via `predev`/`prebuild`/`pretest`:
-  - `src/src/version.generated.ts`
-  - `src/public/version.txt`
+  - `src/public/version.txt` (fetched by the React app at runtime)
 
 ## UI / styling conventions
 

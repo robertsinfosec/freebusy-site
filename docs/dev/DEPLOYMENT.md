@@ -150,7 +150,7 @@ Understanding how the build works.
 2. **Version stamping:**
 
    ```bash
-   npm run prebuild  # Generates version.generated.ts
+   npm run prebuild  # Generates version.txt
    ```
 
 3. **Vite build:**
