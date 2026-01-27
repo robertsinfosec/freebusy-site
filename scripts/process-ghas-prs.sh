@@ -1,0 +1,284 @@
+#!/bin/bash
+#
+# Process GitHub Advanced Security PRs Script
+#
+# This script automates the process of testing and merging GitHub Advanced Security
+# pull requests from Dependabot, Copilot Autofix, and other GHAS automated sources.
+# Requires GitHub CLI (gh) to filter PRs by author.
+#
+# Usage:
+#   ./scripts/process-ghas-prs.sh [OPTIONS]
+#
+# Options:
+#   --dry-run              Show what would be done without actually merging
+#   --author AUTHOR        Only process PRs from AUTHOR (can be used multiple times)
+#   --all                  Process all automated authors (default)
+#
+# Examples:
+#   ./scripts/process-ghas-prs.sh --dry-run
+#   ./scripts/process-ghas-prs.sh --author dependabot
+#   ./scripts/process-ghas-prs.sh --author dependabot --author copilot-autofix
+#
+# First-time setup:
+#   gh auth login
+#
+# Requirements:
+#   - GitHub CLI (gh) installed and authenticated
+#   - Must be run from repository root
+#   - Must have clean working directory
+#   - Must be on main branch initially
+#
+
+set -euo pipefail
+
+# Configuration
+MAIN_BRANCH="main"
+TEST_DIR="src"
+TEST_COMMAND="npm test"
+DRY_RUN=false
+
+# Automated PR authors to process
+# These are the GitHub app/bot usernames
+declare -a AUTOMATED_AUTHORS=(
+    "dependabot[bot]"        # Dependabot dependency/security updates
+    "copilot-autofix[bot]"   # GitHub Copilot Autofix for CodeQL
+)
+
+# User-specified authors (overrides default if set)
+declare -a USER_AUTHORS=()
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --author)
+            USER_AUTHORS+=("$2")
+            shift 2
+            ;;
+        --all)
+            # Use default authors (already set)
+            shift
+            ;;
+        -h|--help)
+            grep '^#' "$0" | grep -v '#!/bin/bash' | sed 's/^# //' | sed 's/^#//'
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}[ERROR]${NC} Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Use user authors if specified, otherwise use defaults
+if [[ ${#USER_AUTHORS[@]} -gt 0 ]]; then
+    AUTOMATED_AUTHORS=("${USER_AUTHORS[@]}")
+fi
+
+if [[ "$DRY_RUN" == true ]]; then
+    echo -e "${YELLOW}DRY RUN MODE - No changes will be made${NC}\n"
+fi
+
+# Helper functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# Check if gh CLI is installed
+if ! command -v gh &> /dev/null; then
+    log_error "GitHub CLI (gh) is required but not installed"
+    log_info "Install with: sudo apt-get install gh"
+    log_info "Or see: https://cli.github.com/manual/installation"
+    exit 1
+fi
+
+# Check if gh is authenticated
+if ! gh auth status &> /dev/null; then
+    log_error "GitHub CLI is not authenticated"
+    log_info "Run: gh auth login"
+    exit 1
+fi
+
+# Verify we're in the repo root
+if [[ ! -d ".git" ]]; then
+    log_error "Must be run from repository root"
+    exit 1
+fi
+
+# Verify we're on main branch
+current_branch=$(git branch --show-current)
+if [[ "$current_branch" != "$MAIN_BRANCH" ]]; then
+    log_error "Must be on $MAIN_BRANCH branch (currently on $current_branch)"
+    exit 1
+fi
+
+# Verify clean working directory
+if [[ -n $(git status --porcelain) ]]; then
+    log_error "Working directory must be clean. Commit or stash changes first."
+    exit 1
+fi
+
+log_info "Fetching latest changes from remote..."
+git fetch origin
+
+log_info "Finding automated PRs..."
+log_info "Authors: ${AUTOMATED_AUTHORS[*]}"
+
+# Get all open PRs from automated authors using GitHub CLI
+pr_data=""
+for author in "${AUTOMATED_AUTHORS[@]}"; do
+    log_info "Querying PRs from: $author"
+    # Get PR number, branch name, and title
+    # Format: PR_NUMBER|BRANCH_NAME|TITLE
+    prs=$(gh pr list --state open --author "$author" --json number,headRefName,title --jq '.[] | "\(.number)|\(.headRefName)|\(.title)"' || true)
+    
+    if [[ -n "$prs" ]]; then
+        if [[ -z "$pr_data" ]]; then
+            pr_data="$prs"
+        else
+            pr_data="$pr_data"$'\n'"$prs"
+        fi
+    fi
+done
+
+if [[ -z "$pr_data" ]]; then
+    log_info "No open PRs found from automated authors: ${AUTOMATED_AUTHORS[*]}"
+    exit 0
+fi
+
+# Count PRs
+pr_count=$(echo "$pr_data" | wc -l)
+log_info "Found $pr_count automated PR(s)"
+echo ""
+while IFS='|' read -r pr_num branch title; do
+    echo "  - PR #$pr_num: $title"
+done <<< "$pr_data"
+echo ""
+
+# Track results
+merged_count=0
+failed_count=0
+skipped_count=0
+
+# Process each PR
+while IFS='|' read -r pr_num branch title; do
+    echo ""
+    echo "=========================================="
+    log_info "Processing PR #$pr_num: $title"
+    log_info "Branch: $branch"
+    echo "=========================================="
+    
+    # Check if branch exists locally, delete if it does (we'll recreate from remote)
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+        log_info "Deleting stale local branch: $branch"
+        git branch -D "$branch" >/dev/null 2>&1
+    fi
+    
+    # Checkout the PR branch
+    log_info "Checking out PR #$pr_num branch: $branch"
+    if ! git checkout -b "$branch" "origin/$branch" --quiet; then
+        log_error "Failed to checkout branch: $branch"
+        ((skipped_count++))
+        git checkout "$MAIN_BRANCH" --quiet
+        continue
+    fi
+    
+    # Run tests
+    log_info "Running tests in $TEST_DIR..."
+    if (cd "$TEST_DIR" && $TEST_COMMAND); then
+        log_success "Tests passed for PR #$pr_num"
+        
+        # Switch back to main
+        log_info "Switching back to $MAIN_BRANCH"
+        git checkout "$MAIN_BRANCH" --quiet
+        
+        if [[ "$DRY_RUN" == true ]]; then
+            log_warning "[DRY RUN] Would merge PR #$pr_num: $branch into $MAIN_BRANCH"
+            ((merged_count++))
+        else
+            # Merge the branch
+            log_info "Merging PR #$pr_num: $branch into $MAIN_BRANCH"
+            if git merge --no-ff "$branch" -m "Merge pull request #$pr_num from $branch
+
+$title
+
+Automatically merged by process-ghas-prs.sh after successful tests."; then
+                log_success "Merged PR #$pr_num"
+                
+                # Push to remote (this will auto-close the PR on GitHub)
+                log_info "Pushing to remote..."
+                if git push origin "$MAIN_BRANCH"; then
+                    log_success "Pushed to remote - PR #$pr_num auto-closed"
+                    
+                    # Clean up local branch
+                    log_info "Cleaning up local branch: $branch"
+                    git branch -d "$branch" >/dev/null 2>&1
+                    
+                    ((merged_count++))
+                else
+                    log_error "Failed to push to remote"
+                    ((failed_count++))
+                fi
+            else
+                log_error "Merge failed for PR #$pr_num"
+                git merge --abort 2>/dev/null || true
+                ((failed_count++))
+            fi
+        fi
+    else
+        log_error "Tests failed for PR #$pr_num"
+        
+        # Switch back to main
+        log_info "Switching back to $MAIN_BRANCH"
+        git checkout "$MAIN_BRANCH" --quiet
+        
+        # Clean up local branch
+        git branch -D "$branch" >/dev/null 2>&1
+        
+        ((failed_count++))
+    fi
+    
+done <<< "$pr_data"
+
+# Summary
+echo ""
+echo "=========================================="
+echo "SUMMARY"
+echo "=========================================="
+log_info "Total PRs processed: $pr_count"
+log_success "Successfully merged: $merged_count"
+log_error "Failed tests or merge: $failed_count"
+log_warning "Skipped: $skipped_count"
+
+if [[ "$DRY_RUN" == true ]]; then
+    echo ""
+    log_warning "This was a DRY RUN. Run without --dry-run to actually merge."
+fi
+
+# Return to main branch
+git checkout "$MAIN_BRANCH" --quiet
+
+exit 0
