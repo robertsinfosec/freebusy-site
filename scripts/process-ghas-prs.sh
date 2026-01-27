@@ -188,6 +188,10 @@ while IFS='|' read -r pr_num branch title; do
     echo "  - PR #$pr_num: $title"
 done <<< "$pr_data"
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Starting to process PRs..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
 # Track results
 merged_count=0
@@ -245,11 +249,12 @@ while IFS='|' read -r pr_num branch title; do
                 echo -e "${BLUE}Branch${NC}: $branch"
                 echo ""
                 
-                # Get PR body/description if available
+                # Get PR body/description if available and format it
                 pr_body=$(gh pr view "$pr_num" --json body --jq '.body' 2>/dev/null || echo "")
                 if [[ -n "$pr_body" ]]; then
                     echo -e "${BLUE}Description:${NC}"
-                    echo "$pr_body" | head -n 10
+                    # Strip HTML tags and format for terminal
+                    echo "$pr_body" | sed 's/<[^>]*>//g' | sed 's/&lt;/</g' | sed 's/&gt;/>/g' | sed 's/&amp;/\&/g' | head -n 15
                     echo ""
                 fi
                 
@@ -320,8 +325,12 @@ Automatically merged by process-ghas-prs.sh after successful tests."; then
     
     # Separator between PRs
     echo ""
+    log_info "Moving to next PR..."
+    echo ""
     
 done <<< "$pr_data"
+
+log_info "Finished processing all PRs"
 
 # Summary
 echo ""
