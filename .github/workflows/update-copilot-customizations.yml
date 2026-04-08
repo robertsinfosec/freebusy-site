@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: robertsinfosec/update-copilot-customizations-action@v2
+      - uses: robertsinfosec/update-copilot-customizations-action@v3
         with:
           version: ${{ inputs.version || 'latest' }}
       # PR is created automatically
